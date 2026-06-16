@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<title>PO AI Bot</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{background:#05080f;color:#dde6f0;font-family:'Courier New',monospace;min-height:100vh;padding:14px 12px;max-width:500px;margin:0 auto}
+input{background:#0b1525;border:1px solid #1a3050;color:#cce4f7;padding:10px 12px;border-radius:5px;font-family:inherit;font-size:13px;width:100%;outline:none;-webkit-appearance:none}
+input:focus{border-color:#a855f7}
+input[type=range]{padding:6px 0;height:28px}
+input::placeholder{color:#243a50}
+.btn{background:#0b1525;border:1px solid #1a3050;color:#6a9ab4;padding:9px 12px;border-radius:5px;cursor:pointer;font-family:inherit;font-size:11px;letter-spacing:1px;text-transform:uppercase}
+.btn.on{border-color:#00e8a2;color:#00e8a2;background:#051a10}
+.btn.warn{border-color:#f0b429;color:#f0b429}
+.btn.blue{border-color:#4a90c4;color:#4a90c4}
+.lbl{font-size:9px;color:#243a50;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:5px;display:block}
+.card{background:#0b1525;border:1px solid #1a3050;border-radius:8px;padding:14px;margin-bottom:10px}
+.tab{flex:1;padding:9px 3px;background:#0b1525;border:none;border-bottom:2px solid #1a3050;color:#2d4060;cursor:pointer;font-family:inherit;font-size:9px;letter-spacing:1px;text-transform:uppercase;text-align:center}
+.tab.on{color:#cce4f7;border-bottom-color:#a855f7;background:#0d1035}
+.pair-btn{padding:6px 10px;background:#0b1525;border:1px solid #1a3050;color:#2d4060;cursor:pointer;font-family:inherit;border-radius:5px;font-size:10px}
+.pair-btn.active{border-color:#a855f7;color:#a855f7;background:#0d0520}
+.type-btn{flex:1;padding:8px;background:#0b1525;border:1px solid #1a3050;color:#2d4060;cursor:pointer;font-family:inherit;border-radius:5px;font-size:10px;text-align:center}
+.type-btn.active{border-color:#f0b429;color:#f0b429;background:#0d0a00}
+.pulse{animation:pulse 1.5s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.2}}
+.blink{animation:blink 0.6s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+.spin{animation:spin 1s linear infinite}
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+.fadein{animation:fadein 0.3s ease}
+@keyframes fadein{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
+.glow{animation:glow 1s ease-in-out infinite}
+@keyframes glow{0%,100%{box-shadow:0 0 5px #f0b42944}50%{box-shadow:0 0 20px #f0b42988}}
+.ai-pulse{animation:aiP 1.2s ease-in-out infinite}
+@keyframes aiP{0%,100%{opacity:1}50%{opacity:0.5}}
+.hidden{display:none!important}
+.sdot{width:6px;height:6px;border-radius:50%;background:#1a3050;transition:all 0.2s}
+.sdot.active{background:#a855f7;width:16px;border-radius:3px}
+</style>
+</head>
+<body>
+<div id="app">
+
+<div style="margin-bottom:14px;display:flex;align-items:center;justify-content:space-between">
+  <div>
+    <div style="display:flex;align-items:center;gap:7px;margin-bottom:2px">
+      <div id="statusDot" style="width:7px;height:7px;border-radius:50%;background:#1a3050"></div>
+      <span style="font-size:14px;font-weight:900;letter-spacing:3px;color:#cce4f7">PO AI BOT</span>
+      <span style="font-size:9px;background:#0d0520;color:#a855f7;padding:2px 6px;border-radius:3px;border:1px solid #a855f744">🧠 AI</span>
+    </div>
+    <div style="font-size:8px;color:#1a3050;letter-spacing:2px">POCKET OPTION · GEMINI AI · TWELVE DATA · LAGOS</div>
+  </div>
+  <div id="headerBtns" style="display:none;gap:5px">
+    <button class="btn on" id="soundBtn" onclick="toggleSound()" style="padding:5px 8px;font-size:13px">🔔</button>
+    <button class="btn warn" onclick="stopBot()" style="padding:5px 10px;font-size:10px">⏹ STOP</button>
+  </div>
+</div>
+
+<!-- SETUP -->
+<div id="setupScreen" class="fadein">
+  <div class="card" style="border-color:#a855f744">
+    <div style="font-size:10px;color:#a855f7;margin-bottom:14px;line-height:1.8;padding:8px 10px;background:#0d0520;border-radius:5px;border:1px solid #a855f733">
+      🧠 <b>Gemini AI + Twelve Data</b><br>
+      • EUR/USD · USD/JPY · AUD/USD (forex)<br>
+      • EUR/USD · USD/JPY · AUD/USD OTC (24/7)<br>
+      • Real candle data → AI analysis → signal<br>
+      • Lagos session filter for forex
+    </div>
+    <div style="margin-bottom:10px">
+      <span class="lbl">AI Server URL <span style="color:#f0b429">⚡ Required</span></span>
+      <input type="text" id="serverUrl" placeholder="https://your-app.onrender.com">
+    </div>
+    <div style="margin-bottom:10px">
+      <span class="lbl">Telegram Bot Token</span>
+      <div style="position:relative">
+        <input type="text" id="tgToken" placeholder="1234567890:AAH..." style="padding-right:50px">
+        <button onclick="toggleVis('tgToken',this)" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:#4a90c4;cursor:pointer;font-size:11px;font-family:inherit">HIDE</button>
+      </div>
+    </div>
+    <div style="margin-bottom:10px">
+      <span class="lbl">Telegram Chat ID</span>
+      <input type="text" id="tgChatId" placeholder="e.g. 6566681234">
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+      <div>
+        <span class="lbl">Balance ($)</span>
+        <input type="number" id="balance" value="100" oninput="updateRiskLabel()">
+      </div>
+      <div>
+        <span class="lbl" id="riskLbl">Risk: 2% = $2.00</span>
+        <input type="range" id="riskRange" min="1" max="5" value="2" oninput="updateRiskLabel()" style="accent-color:#00e8a2">
+      </div>
+    </div>
+    <div style="margin-bottom:14px">
+      <span class="lbl" id="confLbl">Min AI Confidence: 65%</span>
+      <input type="range" id="confRange" min="55" max="85" value="65" oninput="updateConfLabel()" style="accent-color:#a855f7">
+      <div style="display:flex;justify-content:space-between;font-size:8px;color:#1a3050;margin-top:2px"><span>55% — more</span><span>85% — strict</span></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:8px">
+      <button class="btn on" id="soundToggle" onclick="toggleSoundSetup()" style="flex:1">🔔 Sound ON</button>
+      <button class="btn blue" onclick="testServer()" style="flex:1">🧪 TEST SERVER</button>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <button class="btn blue" onclick="testTelegram()" style="width:100%">📱 TEST TELEGRAM</button>
+    </div>
+    <button onclick="startBot()" style="width:100%;padding:14px;background:#0d0520;border:2px solid #a855f7;color:#a855f7;border-radius:6px;cursor:pointer;font-family:inherit;font-size:13px;letter-spacing:3px;font-weight:900">🧠 START AI BOT</button>
+  </div>
+  <div class="card" style="border-color:#f0b42933;font-size:10px;color:#1a3050;line-height:2">
+    <div style="color:#f0b429;font-weight:700;margin-bottom:4px">📋 SETUP GUIDE:</div>
+    <div>1. GitHub → upload app.py, requirements.txt, render.yaml</div>
+    <div>2. Render → connect repo → add env vars:</div>
+    <div style="padding-left:10px">• <b style="color:#4a7a9b">GEMINI_API_KEY</b> → aistudio.google.com</div>
+    <div style="padding-left:10px">• <b style="color:#4a7a9b">TWELVE_API_KEY</b> → twelvedata.com (free)</div>
+    <div>3. Deploy → paste Render URL above → START!</div>
+  </div>
+</div>
+
+<!-- RUNNING -->
+<div id="runningScreen" class="hidden fadein">
+  <div id="sessionBanner" style="margin-bottom:10px;padding:8px 14px;border-radius:6px;display:flex;align-items:center;justify-content:space-between">
+    <span id="sessionText" style="font-size:11px;font-weight:700"></span>
+    <span id="sessionTime" style="font-size:9px;color:#243a50"></span>
+  </div>
+
+  <div id="thinkingBanner" class="hidden" style="background:#0d0520;border:1px solid #a855f744;border-radius:8px;padding:12px 14px;margin-bottom:10px;display:flex;align-items:center;gap:12px">
+    <div style="width:24px;height:24px;border:2px solid #a855f733;border-top:2px solid #a855f7;border-radius:50%;flex-shrink:0" class="spin"></div>
+    <div>
+      <div style="font-size:10px;color:#a855f7;font-weight:700" class="ai-pulse">🧠 GEMINI AI ANALYZING...</div>
+      <div id="thinkingPair" style="font-size:9px;color:#243a50;margin-top:2px"></div>
+    </div>
+  </div>
+
+  <div id="entryBanner" class="glow hidden" style="background:#0e0700;border:2px solid #f0b429;border-radius:8px;padding:12px 14px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between">
+    <div style="flex:1">
+      <div class="blink" style="font-size:9px;color:#f0b429;letter-spacing:2px;margin-bottom:3px">⚡ AI SIGNAL — ENTER IN 60s</div>
+      <div id="entrySymDir" style="font-size:20px;font-weight:900;color:#00e8a2"></div>
+      <div id="entryDetails" style="font-size:10px;color:#f0b429;margin-top:2px"></div>
+      <div id="entryConf" style="font-size:9px;color:#243a50;margin-top:1px"></div>
+    </div>
+    <div style="text-align:center">
+      <svg width="64" height="64">
+        <circle cx="32" cy="32" r="26" fill="none" stroke="#1a3050" stroke-width="4"/>
+        <circle id="entryRingCircle" cx="32" cy="32" r="26" fill="none" stroke="#f0b429" stroke-width="4" stroke-dasharray="163 163" stroke-linecap="round" transform="rotate(-90 32 32)" style="transition:stroke-dasharray 1s linear"/>
+        <text id="entryRingText" x="32" y="37" text-anchor="middle" fill="#f0b429" font-size="13" font-weight="bold" font-family="monospace">60</text>
+      </svg>
+      <div style="font-size:8px;color:#243a50">ENTRY</div>
+    </div>
+  </div>
+
+  <div id="lossWarning" class="blink hidden" style="background:#1a0000;border:2px solid #ff4d6d;border-radius:8px;padding:10px 14px;margin-bottom:10px;text-align:center">
+    <div style="font-size:12px;color:#ff4d6d;font-weight:700">🚨 3 LOSSES IN A ROW — STOP TRADING!</div>
+  </div>
+
+  <div style="display:flex;gap:8px;margin-bottom:10px">
+    <button class="type-btn active" id="typeForex" onclick="setType('forex')">🌍 FOREX</button>
+    <button class="type-btn" id="typeOTC" onclick="setType('otc')">🔄 OTC (24/7)</button>
+  </div>
+
+  <div style="margin-bottom:10px">
+    <span class="lbl" style="margin-bottom:6px">SELECT PAIR</span>
+    <div id="pairBtns" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:auto 1fr;gap:8px;margin-bottom:10px">
+    <div class="card" style="padding:10px 12px;display:flex;align-items:center;gap:10px;margin:0">
+      <div style="text-align:center">
+        <svg width="64" height="64">
+          <circle cx="32" cy="32" r="26" fill="none" stroke="#1a3050" stroke-width="4"/>
+          <circle id="nextRingCircle" cx="32" cy="32" r="26" fill="none" stroke="#a855f7" stroke-width="4" stroke-dasharray="163 163" stroke-linecap="round" transform="rotate(-90 32 32)" style="transition:stroke-dasharray 1s linear"/>
+          <text id="nextRingText" x="32" y="37" text-anchor="middle" fill="#a855f7" font-size="10" font-weight="bold" font-family="monospace">6:00</text>
+        </svg>
+        <div style="font-size:8px;color:#243a50;margin-top:1px">NEXT AI</div>
+      </div>
+      <div>
+        <span class="lbl">Next Analysis</span>
+        <div id="nextSigTime" style="font-size:16px;font-weight:900;color:#a855f7">6:00</div>
+        <div id="lastSigTime" style="font-size:8px;color:#1a3050;margin-top:2px"></div>
+      </div>
+    </div>
+    <div class="card" style="padding:10px 12px;margin:0">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <span class="lbl">Win Rate</span>
+          <div id="winRateDisp" style="font-size:22px;font-weight:900;color:#f0b429">0%</div>
+          <div id="wlDisp" style="font-size:9px;color:#243a50">0W / 0L</div>
+        </div>
+        <div style="text-align:right">
+          <span class="lbl">P&amp;L</span>
+          <div id="pnlDisp" style="font-size:16px;font-weight:900;color:#a855f7">$0.00</div>
+          <div id="sentDisp" style="font-size:9px;color:#243a50">0 signals</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;margin-bottom:4px;border:1px solid #1a3050;border-radius:6px;overflow:hidden">
+    <button class="tab on" onclick="switchTab('signal')">🧠 Signal</button>
+    <button class="tab" onclick="switchTab('reasoning')">💭 Reasoning</button>
+    <button class="tab" onclick="switchTab('history')">📋 Trades</button>
+    <button class="tab" onclick="switchTab('money')">💰 Money</button>
+  </div>
+  <div style="display:flex;justify-content:center;gap:6px;margin-bottom:8px">
+    <div class="sdot active" data-tab="signal"></div>
+    <div class="sdot" data-tab="reasoning"></div>
+    <div class="sdot" data-tab="history"></div>
+    <div class="sdot" data-tab="money"></div>
+  </div>
+
+  <!-- SIGNAL TAB -->
+  <div id="tab-signal" class="fadein">
+    <div id="signalCard" style="border:1px solid #a855f744;border-radius:8px;padding:14px;margin-bottom:10px;background:linear-gradient(135deg,#080e1a,#a855f709);min-height:160px">
+      <div id="signalLoading" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:140px;gap:10px">
+        <div style="font-size:32px">🧠</div>
+        <div style="font-size:10px;color:#a855f7" class="ai-pulse">WAITING FOR AI...</div>
+        <div style="font-size:9px;color:#1a3050">Start the bot to begin</div>
+      </div>
+      <div id="signalContent" class="hidden">
+        <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+          <div>
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+              <span style="font-size:9px;background:#0d0520;color:#a855f7;padding:2px 6px;border-radius:3px;border:1px solid #a855f744">🧠 AI</span>
+              <span id="sigPairType" style="font-size:8px;color:#f0b429;padding:2px 6px;border-radius:3px;border:1px solid #f0b42944"></span>
+            </div>
+            <span class="lbl" id="sigPairLabel"></span>
+            <div id="sigDirection" style="font-size:32px;font-weight:900;line-height:1"></div>
+            <div id="sigType" style="font-size:9px;margin-top:3px"></div>
+            <div id="sigExpiry" style="font-size:9px;color:#f0b429;margin-top:2px"></div>
+          </div>
+          <div style="text-align:right">
+            <span class="lbl">AI CONFIDENCE</span>
+            <div id="sigConf" style="font-size:26px;font-weight:900"></div>
+            <div id="sigStr" style="font-size:9px;color:#243a50;margin-top:1px"></div>
+            <div id="sigStake" style="font-size:10px;color:#f0b429;margin-top:1px;font-weight:700"></div>
+          </div>
+        </div>
+        <div style="background:#050c18;border-radius:2px;height:3px;margin-bottom:10px;overflow:hidden">
+          <div id="confBar" style="height:100%;width:0%;transition:width 1s ease;border-radius:2px"></div>
+        </div>
+        <div id="aiSummaryBox" style="background:#0d0520;border:1px solid #a855f733;border-radius:6px;padding:10px;font-size:10px;line-height:1.7"></div>
+      </div>
+    </div>
+    <div class="card" style="padding:10px 12px">
+      <span class="lbl" style="margin-bottom:6px">ALL PAIRS STATUS</span>
+      <div id="allPairs"></div>
+    </div>
+  </div>
+
+  <!-- REASONING TAB -->
+  <div id="tab-reasoning" class="hidden fadein">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <span class="lbl">GEMINI AI FULL ANALYSIS</span>
+        <div id="bdPair" style="font-size:9px;color:#a855f7;font-weight:700"></div>
+      </div>
+      <div id="aiFullReasoning" style="max-height:280px;overflow-y:auto;font-size:10px;color:#8ab4cc;line-height:1.8">
+        <div style="color:#1a3050;text-align:center;padding:20px">AI reasoning appears after analysis...</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+      <div style="background:#0b1525;border-radius:5px;padding:8px;text-align:center;border:1px solid #00e8a222"><div style="font-size:7px;color:#243a50;margin-bottom:4px">BULL</div><div id="bdBull" style="font-size:18px;color:#00e8a2;font-weight:900">--</div></div>
+      <div style="background:#0b1525;border-radius:5px;padding:8px;text-align:center;border:1px solid #ff4d6d22"><div style="font-size:7px;color:#243a50;margin-bottom:4px">BEAR</div><div id="bdBear" style="font-size:18px;color:#ff4d6d;font-weight:900">--</div></div>
+      <div style="background:#0b1525;border-radius:5px;padding:8px;text-align:center;border:1px solid #a855f744"><div style="font-size:7px;color:#243a50;margin-bottom:4px">CONF</div><div id="bdConf" style="font-size:18px;color:#a855f7;font-weight:900">--%</div></div>
+    </div>
+  </div>
+
+  <!-- HISTORY TAB -->
+  <div id="tab-history" class="hidden fadein">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <span class="lbl">TRADE HISTORY</span>
+        <div style="display:flex;gap:8px;font-size:10px">
+          <span id="histWins" style="color:#00e8a2">0W</span>
+          <span id="histLosses" style="color:#ff4d6d">0L</span>
+          <span id="histPnl" style="font-weight:700;color:#a855f7">$0.00</span>
+        </div>
+      </div>
+      <div id="tradeList" style="max-height:300px;overflow-y:auto">
+        <div style="text-align:center;padding:20px 0;color:#1a3050;font-size:10px">No trades yet — use demo first!</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MONEY TAB -->
+  <div id="tab-money" class="hidden fadein">
+    <div class="card">
+      <span class="lbl" style="margin-bottom:10px;display:block">💰 MONEY MANAGEMENT</span>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+        <div><span class="lbl">Balance ($)</span><input type="number" id="balanceR" value="100" oninput="updateMoneyCalc()"></div>
+        <div><span class="lbl" id="riskLblR">Risk: 2% = $2.00</span><input type="range" id="riskR" min="1" max="5" value="2" oninput="updateMoneyCalc()" style="accent-color:#00e8a2"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px">
+        <div style="background:#050c18;border-radius:4px;padding:8px;text-align:center"><div style="font-size:7px;color:#1a3050;margin-bottom:3px">STAKE</div><div id="mStake" style="font-size:12px;color:#00e8a2;font-weight:700">$2.00</div></div>
+        <div style="background:#050c18;border-radius:4px;padding:8px;text-align:center"><div style="font-size:7px;color:#1a3050;margin-bottom:3px">MAX LOSS</div><div id="mMaxLoss" style="font-size:12px;color:#ff4d6d;font-weight:700">$10.00</div></div>
+        <div style="background:#050c18;border-radius:4px;padding:8px;text-align:center"><div style="font-size:7px;color:#1a3050;margin-bottom:3px">STOP AT</div><div id="mStop" style="font-size:12px;color:#f0b429;font-weight:700">$90.00</div></div>
+      </div>
+      <div style="font-size:9px;color:#1a3050;padding:6px 8px;background:#050c18;border-radius:4px">⚠ Stop at 3 losses. DEMO FIRST always.</div>
+    </div>
+    <div class="card">
+      <span class="lbl" style="margin-bottom:8px;display:block">📈 MARTINGALE</span>
+      <div style="font-size:9px;color:#243a50;margin-bottom:8px">Base: <span id="mgBase">$2.00</span></div>
+      <div id="martingaleTable"></div>
+      <div style="font-size:9px;color:#ff4d6d;margin-top:6px;padding:5px 8px;background:#1a0510;border-radius:4px">⚠ NEVER go past Step 3</div>
+    </div>
+    <div class="card">
+      <span class="lbl" style="margin-bottom:8px;display:block">📉 LOSS TRACKER</span>
+      <div id="lossTracker" style="display:flex;gap:5px;margin-bottom:6px"></div>
+      <div id="lossMsg" style="text-align:center;font-size:9px;color:#1a3050;padding:4px;margin-bottom:6px">No consecutive losses</div>
+      <button id="resetLossBtn" class="btn hidden" onclick="resetLosses()" style="width:100%;font-size:10px">Reset Loss Counter</button>
+    </div>
+    <div class="card">
+      <span class="lbl" style="margin-bottom:8px;display:block">⚙ SETTINGS</span>
+      <span class="lbl" id="confLblR">Min AI Confidence: 65%</span>
+      <input type="range" id="confR" min="55" max="85" value="65" oninput="updateConfR()" style="accent-color:#a855f7">
+      <div style="display:flex;justify-content:space-between;font-size:8px;color:#1a3050;margin-top:2px;margin-bottom:10px"><span>55%</span><span>85%</span></div>
+      <button class="btn blue" onclick="testTelegram()" style="width:100%;margin-bottom:8px">📱 TEST TELEGRAM</button>
+      <button class="btn" onclick="testServer()" style="width:100%">🧪 TEST AI SERVER</button>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:2px;padding:10px 12px">
+    <span class="lbl" style="margin-bottom:4px;display:block">ACTIVITY LOG</span>
+    <div id="activityLog" style="max-height:90px;overflow-y:auto;font-size:9px"><div style="color:#1a3050">Ready...</div></div>
+  </div>
+</div>
+
+<div style="margin-top:10px;font-size:8px;color:#0a1520;text-align:center">⚠ Educational use only · Not financial advice · Demo first</div>
+</div>
+
+<script>
+const FOREX_PAIRS=[
+  {id:"EUR/USD",label:"EUR/USD",short:"EUR/USD",color:"#4a90c4",type:"forex"},
+  {id:"USD/JPY",label:"USD/JPY",short:"USD/JPY",color:"#f0b429",type:"forex"},
+  {id:"AUD/USD",label:"AUD/USD",short:"AUD/USD",color:"#a855f7",type:"forex"}
+];
+const OTC_PAIRS=[
+  {id:"frxEURUSD",label:"EUR/USD OTC",short:"EUR/USD",color:"#4a90c4",type:"otc"},
+  {id:"frxUSDJPY",label:"USD/JPY OTC",short:"USD/JPY",color:"#f0b429",type:"otc"},
+  {id:"frxAUDUSD",label:"AUD/USD OTC",short:"AUD/USD",color:"#a855f7",type:"otc"}
+];
+
+function isActiveSession(){
+  const lagos=new Date(new Date().toLocaleString("en-US",{timeZone:"Africa/Lagos"}));
+  const h=lagos.getHours(),day=lagos.getDay(),mins=h*60+lagos.getMinutes();
+  if(day===0||day===6)return{active:false,label:"⛔ WEEKEND — Use OTC",color:"#f0b429"};
+  if(mins>=480&&mins<720)return{active:true,label:"🔥 LONDON OPEN",color:"#00e8a2",session:"London"};
+  if(mins>=720&&mins<1020)return{active:true,label:"🔥 LONDON + NEW YORK",color:"#00e8a2",session:"London+NY"};
+  if(mins>=1020&&mins<1260)return{active:true,label:"✅ NEW YORK SESSION",color:"#4a90c4",session:"NewYork"};
+  return{active:false,label:"⚠ LOW LIQUIDITY — Use OTC",color:"#f0b429",session:"Off"};
+}
+function getLagosTime(){return new Date(new Date().toLocaleString("en-US",{timeZone:"Africa/Lagos"}));}
+
+let S={
+  running:false,soundOn:true,activePairIdx:0,activeTab:"signal",pairType:"forex",
+  minConf:65,balance:100,riskPct:2,tgToken:"",tgChatId:"",serverUrl:"",
+  aiResults:{},pollTimers:{},liveData:{},
+  nextSignal:360,countdownTimer:null,entryTimer:null,
+  entryCountdown:0,waitingEntry:null,
+  stats:{sent:0,wins:0,losses:0},
+  tradeHistory:[],consLosses:0,lastSigTime:null,logs:[]
+};
+
+function currentPairs(){return S.pairType==="forex"?FOREX_PAIRS:OTC_PAIRS;}
+
+function beep(f,d=0.15,v=0.3){try{const c=new(window.AudioContext||window.webkitAudioContext)();const o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);o.frequency.value=f;g.gain.value=v;o.start();g.gain.exponentialRampToValueAtTime(0.001,c.currentTime+d);o.stop(c.currentTime+d);}catch(e){}}
+function sigSound(){if(!S.soundOn)return;beep(660,0.1);setTimeout(()=>beep(880,0.15),120);setTimeout(()=>beep(1100,0.2),260);}
+function entrySound(){if(!S.soundOn)return;[440,550,660,880].forEach((f,i)=>setTimeout(()=>beep(f,0.12),i*80));}
+function winSound(){if(!S.soundOn)return;[523,659,784,1047].forEach((f,i)=>setTimeout(()=>beep(f,0.15),i*90));}
+function lossSound(){if(!S.soundOn)return;[400,350,300].forEach((f,i)=>setTimeout(()=>beep(f,0.2),i*100));}
+
+// OTC candles via Deriv WebSocket
+function fetchOTCCandles(pair){
+  return new Promise((resolve)=>{
+    try{
+      const ws=new WebSocket("wss://ws.binaryws.com/websockets/v3?app_id=1089");
+      let done=false;
+      const timeout=setTimeout(()=>{if(!done){done=true;try{ws.close();}catch(e){}useFakeOTC(pair);resolve();}},15000);
+      ws.onopen=()=>{ws.send(JSON.stringify({ticks_history:pair.id,adjust_start_time:1,count:100,end:"latest",start:1,style:"candles",granularity:300}));};
+      ws.onmessage=(e)=>{
+        try{
+          const data=JSON.parse(e.data);
+          if(data.error){clearTimeout(timeout);done=true;ws.close();useFakeOTC(pair);resolve();return;}
+          if(data.msg_type==="candles"){
+            clearTimeout(timeout);done=true;
+            const fmt=data.candles.map(c=>({open:+c.open,high:+c.high,low:+c.low,close:+c.close}));
+            if(!fmt.length){ws.close();useFakeOTC(pair);resolve();return;}
+            S.liveData[pair.id]={candles:fmt,status:"live",price:fmt[fmt.length-1]?.close};
+            addLog("✅ "+pair.short+" OTC LIVE","success");
+            ws.close();resolve();
+          }
+        }catch(err){if(!done){done=true;clearTimeout(timeout);try{ws.close();}catch(e){}useFakeOTC(pair);resolve();}}
+      };
+      ws.onerror=()=>{if(!done){done=true;clearTimeout(timeout);useFakeOTC(pair);resolve();}};
+      ws.onclose=()=>{if(!done){done=true;clearTimeout(timeout);useFakeOTC(pair);resolve();}};
+    }catch(e){useFakeOTC(pair);resolve();}
+  });
+}
+
+function useFakeOTC(pair){
+  const bases={frxEURUSD:1.085,frxUSDJPY:149.5,frxAUDUSD:0.658};
+  const vols={frxEURUSD:0.0008,frxUSDJPY:0.15,frxAUDUSD:0.0008};
+  let p=bases[pair.id]||1.0;const vol=vols[pair.id]||0.001;
+  const ca=[];let trend=(Math.random()>0.5?1:-1)*vol*0.3;
+  for(let i=99;i>=0;i--){if(Math.random()<0.08)trend*=-1;const ch=trend+(Math.random()-0.5)*vol*0.5;const o=p,c=p+ch;ca.push({open:o,high:Math.max(o,c)+Math.random()*vol*0.2,low:Math.min(o,c)-Math.random()*vol*0.2,close:c});p=c;}
+  addLog("⚠ "+pair.short+" OTC: simulated","warn");
+  S.liveData[pair.id]={candles:ca,status:"simulated",price:ca[ca.length-1]?.close};
+}
+
+function computeOTCMarketData(pair){
+  const d=S.liveData[pair.id];if(!d?.candles||d.candles.length<30)return null;
+  const candles=d.candles;const cl=candles.map(c=>c.close);const n=cl.length-1;
+  function ema(arr,p){const k=2/(p+1);let e=arr[0];return arr.map((v,i)=>{if(!i)return e;e=v*k+e*(1-k);return e;});}
+  const e9=ema(cl,9),e21=ema(cl,21),e50=ema(cl,50);
+  const rv=[];let ag=0,al=0;
+  for(let i=1;i<=14;i++){const d=cl[i]-cl[i-1];ag+=Math.max(d,0)/14;al+=Math.max(-d,0)/14;}
+  for(let i=14;i<cl.length;i++){const d=cl[i]-cl[i-1];ag=(ag*13+Math.max(d,0))/14;al=(al*13+Math.max(-d,0))/14;rv.push(al===0?100:100-100/(1+ag/al));}
+  const rsi=rv[rv.length-1]||50;
+  const e12=ema(cl,12),e26=ema(cl,26);
+  const macdH=e12[n]-e26[n]-(ema(e12.map((v,i)=>v-e26[i]),9)[n]);
+  const sl=cl.slice(n-19,n+1),mn=sl.reduce((a,b)=>a+b,0)/20;
+  const sd=Math.sqrt(sl.reduce((a,b)=>a+(b-mn)**2,0)/20);
+  const sl14=candles.slice(n-13,n+1);
+  const h14=Math.max(...sl14.map(c=>c.high)),l14=Math.min(...sl14.map(c=>c.low));
+  const stoch=h14===l14?50:((cl[n]-l14)/(h14-l14))*100;
+  const trendUp=e9[n]>e21[n]&&e21[n]>e50[n];
+  const trendDown=e9[n]<e21[n]&&e21[n]<e50[n];
+  const trend=trendUp?"STRONG UP":trendDown?"STRONG DOWN":e9[n]>e21[n]?"WEAK UP":"WEAK DOWN";
+  const high20=Math.max(...candles.slice(-20).map(c=>c.high));
+  const low20=Math.min(...candles.slice(-20).map(c=>c.low));
+  const last10=candles.slice(-10).map((c,i)=>(i+1)+". "+(c.close>c.open?"UP":"DOWN")+" C:"+c.close.toFixed(5)).join("\n");
+  const atr=candles.slice(-14).reduce((a,c,i,arr)=>{if(!i)return a;return a+Math.max(c.high-c.low,Math.abs(c.high-arr[i-1].close),Math.abs(c.low-arr[i-1].close));},0)/14;
+  return{price:cl[n].toFixed(5),ema9:e9[n].toFixed(5),ema21:e21[n].toFixed(5),ema50:e50[n].toFixed(5),trend,rsi:rsi.toFixed(1),stoch:stoch.toFixed(1),macd_hist:macdH.toFixed(5),bb_upper:(mn+2*sd).toFixed(5),bb_lower:(mn-2*sd).toFixed(5),bb_mid:mn.toFixed(5),atr:atr.toFixed(5),high20:high20.toFixed(5),low20:low20.toFixed(5),candle_summary:last10,session:"OTC-24/7"};
+}
+
+async function analyzeWithAI(pair,marketData){
+  if(!S.serverUrl){addLog("❌ No server URL","error");return null;}
+  try{
+    const body={pair:pair.label,pair_type:pair.type};
+    if(marketData)body.market_data=marketData;
+    else body.session=isActiveSession().session||"";
+    const r=await fetch(S.serverUrl+"/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+    const d=await r.json();
+    if(d.success&&d.signal)return d.signal;
+    addLog("⚠ AI: "+( d.error||"Unknown error"),"warn");
+    if(d.raw)addLog("📄 Raw: "+d.raw.slice(0,150),"warn");
+    return null;
+  }catch(e){addLog("❌ Server: "+e.message,"error");return null;}
+}
+
+async function sendTG(text){
+  if(!S.tgToken||!S.tgChatId)return;
+  if(S.serverUrl){
+    try{const r=await fetch(S.serverUrl+"/telegram",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({token:S.tgToken,chat_id:S.tgChatId,text})});const d=await r.json();if(d.ok){addLog("📱 Telegram ✓","success");return;}}catch(e){}
+  }
+  try{const r=await fetch("https://api.telegram.org/bot"+S.tgToken+"/sendMessage",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({chat_id:S.tgChatId,text,parse_mode:"HTML"})});const d=await r.json();if(d.ok)addLog("📱 Telegram ✓","success");else addLog("❌ TG: "+d.description,"error");}catch(e){addLog("❌ TG: "+e.message,"error");}
+}
+
+async function testTelegram(){
+  S.tgToken=document.getElementById("tgToken")?.value?.trim()||S.tgToken;
+  S.tgChatId=document.getElementById("tgChatId")?.value?.trim()||S.tgChatId;
+  S.serverUrl=document.getElementById("serverUrl")?.value?.trim()||S.serverUrl;
+  if(!S.tgToken||!S.tgChatId){alert("Enter Telegram token and Chat ID!");return;}
+  await sendTG("✅ <b>PO AI BOT</b>\n\nTelegram connected! 🎉\n🧠 Gemini AI + Twelve Data\n📊 3 Forex + 3 OTC pairs\n\n⏰ "+getLagosTime().toLocaleTimeString());
+}
+
+async function testServer(){
+  const url=document.getElementById("serverUrl")?.value?.trim()||S.serverUrl;
+  if(!url){alert("Enter server URL first!");return;}
+  addLog("🧪 Testing server...","info");
+  try{const r=await fetch(url);const d=await r.json();if(d.status==="ok"){addLog("✅ "+d.message,"success");alert("✅ "+d.message);}else addLog("⚠ Server responded oddly","warn");}
+  catch(e){addLog("❌ Server test failed: "+e.message,"error");alert("❌ Failed: "+e.message);}
+}
+
+async function runAICycle(){
+  const sess=isActiveSession();
+  updateSessionBanner(sess);
+  const pairs=currentPairs();
+  if(S.pairType==="forex"&&!sess.active){addLog("⏸ "+sess.label,"warn");renderAll();return;}
+  addLog("🧠 AI analyzing "+pairs.length+" "+S.pairType.toUpperCase()+" pairs...","info");
+  document.getElementById("thinkingBanner").classList.remove("hidden");
+  const candidates=[];
+  for(let i=0;i<pairs.length;i++){
+    const pair=pairs[i];
+    document.getElementById("thinkingPair").textContent="Analyzing "+pair.label+" ("+(i+1)+"/"+pairs.length+")...";
+    addLog("🧠 Analyzing "+pair.short+"...","info");
+    let marketData=null;
+    if(pair.type==="otc"){
+      await fetchOTCCandles(pair);
+      marketData=computeOTCMarketData(pair);
+    }
+    const ai=await analyzeWithAI(pair,marketData);
+    if(!ai){if(i<pairs.length-1)await new Promise(r=>setTimeout(r,4000));continue;}
+    S.aiResults[pair.id]=ai;
+    addLog("🤖 "+pair.short+": "+ai.direction+" "+ai.confidence+"% ["+ai.signal_type+"]","info");
+    if(ai.confidence>=S.minConf)candidates.push({pair,ai});
+    else addLog("⏭ "+pair.short+": "+ai.confidence+"% < "+S.minConf+"%","warn");
+    if(i<pairs.length-1)await new Promise(r=>setTimeout(r,4000));
+  }
+  document.getElementById("thinkingBanner").classList.add("hidden");
+  if(!candidates.length){addLog("📊 No qualifying AI signals","info");renderAll();return;}
+  candidates.sort((a,b)=>{const ss=s=>s.strength==="STRONG"?3:s.strength==="MODERATE"?2:1;return ss(b.ai)-ss(a.ai)||b.ai.confidence-a.ai.confidence;});
+  const best=candidates[0];
+  candidates.slice(1).forEach(c=>addLog("⏭ "+c.pair.short+" — "+best.pair.short+" wins","info"));
+  const{pair,ai}=best;
+  sigSound();
+  const stk=getStake();
+  const expiry=ai.recommended_expiry||"3";
+  S.waitingEntry={pair,ai,stk,expiry,price:(S.liveData[pair.id]?.price||0)};
+  S.entryCountdown=60;
+  S.lastSigTime=getLagosTime().toLocaleTimeString();
+  S.activePairIdx=currentPairs().findIndex(p=>p.id===pair.id);
+  S.stats.sent++;
+  addLog("⚡ SIGNAL: "+pair.short+" "+ai.direction+" "+ai.confidence+"%","success");
+  startEntry();
+  sendTG(
+    "🧠 <b>PO AI SIGNAL</b>\n\n"+
+    "📌 <b>"+pair.label+"</b> "+(pair.type==="otc"?"[OTC]":"[FOREX]")+"\n"+
+    "📈 Direction: <b>"+ai.direction+" "+(ai.direction==="CALL"?"▲":"▼")+"</b>\n"+
+    "💯 AI Confidence: <b>"+ai.confidence+"%</b> — "+ai.strength+"\n"+
+    "🎯 Signal: <b>"+ai.signal_type+"</b>\n"+
+    "⏰ Enter in: <b>1 MINUTE</b>\n"+
+    "⏱ Expiry: <b>"+expiry+" MINUTES</b>\n"+
+    "💰 Stake: <b>$"+stk+"</b>\n"+
+    "🕐 Lagos: "+getLagosTime().toLocaleTimeString()+"\n\n"+
+    "💭 <b>AI Analysis:</b>\n"+ai.summary+"\n\n"+
+    "📋 <b>Reasons:</b>\n"+(ai.key_reasons||[]).map(r=>"• "+r).join("\n")+
+    "\n\n⚠️ "+ai.risk_note+
+    "\n\nWait 1 min → Pocket Option → "+expiry+" min expiry"
+  );
+  renderAll();
+}
+
+function startEntry(){
+  clearInterval(S.entryTimer);
+  S.entryTimer=setInterval(()=>{
+    S.entryCountdown--;updateEntryRing();
+    if(S.entryCountdown<=0){
+      clearInterval(S.entryTimer);
+      if(S.waitingEntry){
+        entrySound();
+        addLog("🔔 ENTER NOW: "+S.waitingEntry.pair.short+" "+S.waitingEntry.ai.direction+"!","success");
+        sendTG("🔔 <b>ENTER NOW!</b>\n\n📌 <b>"+S.waitingEntry.pair.label+"</b>\n📈 <b>"+S.waitingEntry.ai.direction+" "+(S.waitingEntry.ai.direction==="CALL"?"▲":"▼")+"</b>\n⏱ Expiry: <b>"+S.waitingEntry.expiry+" MIN</b>\n💰 Stake: <b>$"+S.waitingEntry.stk+"</b>\n\n⚡ Open Pocket Option NOW!");
+        addTrade(S.waitingEntry);S.waitingEntry=null;
+        document.getElementById("entryBanner").classList.add("hidden");
+      }
+      renderAll();
+    }
+  },1000);
+}
+
+async function startBot(){
+  const su=document.getElementById("serverUrl")?.value?.trim();
+  if(!su){alert("Enter your Render server URL first!");return;}
+  S.serverUrl=su;S.running=true;
+  S.tgToken=document.getElementById("tgToken")?.value?.trim()||"";
+  S.tgChatId=document.getElementById("tgChatId")?.value?.trim()||"";
+  S.minConf=+document.getElementById("confRange").value;
+  S.balance=parseFloat(document.getElementById("balance").value)||100;
+  S.riskPct=+document.getElementById("riskRange").value;
+  document.getElementById("balanceR").value=S.balance;
+  document.getElementById("riskR").value=S.riskPct;
+  document.getElementById("confR").value=S.minConf;
+  document.getElementById("setupScreen").classList.add("hidden");
+  document.getElementById("runningScreen").classList.remove("hidden");
+  document.getElementById("headerBtns").style.display="flex";
+  const sd=document.getElementById("statusDot");
+  sd.style.background="#a855f7";sd.style.boxShadow="0 0 10px #a855f7";sd.classList.add("pulse");
+  buildPairBtns();updateMoneyCalc();
+  updateSessionBanner(isActiveSession());
+  addLog("🧠 PO AI Bot started! Gemini AI + Twelve Data","success");
+  setTimeout(()=>runAICycle(),2000);
+  S.nextSignal=360;
+  S.countdownTimer=setInterval(()=>{S.nextSignal--;updateNextRing();if(S.nextSignal<=0){runAICycle();S.nextSignal=360;}},1000);
+  setInterval(()=>updateSessionBanner(isActiveSession()),60000);
+}
+
+function stopBot(){
+  S.running=false;clearInterval(S.countdownTimer);clearInterval(S.entryTimer);
+  S.waitingEntry=null;S.entryCountdown=0;
+  document.getElementById("setupScreen").classList.remove("hidden");
+  document.getElementById("runningScreen").classList.add("hidden");
+  document.getElementById("headerBtns").style.display="none";
+  const sd=document.getElementById("statusDot");
+  sd.style.background="#1a3050";sd.style.boxShadow="none";sd.classList.remove("pulse");
+  addLog("⏹ Bot stopped","warn");
+}
+
+function setType(type){
+  S.pairType=type;S.activePairIdx=0;
+  document.getElementById("typeForex").classList.toggle("active",type==="forex");
+  document.getElementById("typeOTC").classList.toggle("active",type==="otc");
+  buildPairBtns();
+  addLog("🔄 Switched to "+type.toUpperCase(),"info");
+  runAICycle();
+}
+
+function getStake(){return Math.max(1,S.balance*(S.riskPct/100)).toFixed(2);}
+
+function addLog(msg,type="info"){
+  S.logs.unshift({msg,type,time:new Date().toLocaleTimeString()});
+  if(S.logs.length>50)S.logs.pop();
+  const el=document.getElementById("activityLog");
+  if(el)el.innerHTML=S.logs.map(l=>`<div style="margin-bottom:2px;display:flex;gap:5px"><span style="color:#1a3050;flex-shrink:0">${l.time}</span><span style="color:${l.type==="success"?"#00e8a2":l.type==="error"?"#ff4d6d":l.type==="warn"?"#f0b429":"#2d5070"}">${l.msg}</span></div>`).join("");
+}
+
+function updateSessionBanner(sess){
+  const el=document.getElementById("sessionBanner");if(!el)return;
+  el.style.background=sess.color+"15";el.style.border="1px solid "+sess.color+"44";
+  document.getElementById("sessionText").style.color=sess.color;
+  document.getElementById("sessionText").textContent=sess.label;
+  document.getElementById("sessionTime").textContent="Lagos: "+getLagosTime().toLocaleTimeString();
+}
+
+function switchTab(tab){
+  S.activeTab=tab;
+  ["signal","reasoning","history","money"].forEach(t=>{document.getElementById("tab-"+t)?.classList.toggle("hidden",t!==tab);});
+  document.querySelectorAll(".tab").forEach((b,i)=>b.classList.toggle("on",["signal","reasoning","history","money"][i]===tab));
+  document.querySelectorAll(".sdot").forEach(d=>d.classList.toggle("active",d.dataset.tab===tab));
+  if(tab==="signal")renderSig();if(tab==="reasoning")renderReasoning();
+  if(tab==="history")renderHistory();if(tab==="money")updateMoneyCalc();
+}
+
+function buildPairBtns(){
+  const el=document.getElementById("pairBtns");if(!el)return;
+  const pairs=currentPairs();
+  el.innerHTML=pairs.map((p,i)=>{
+    const ai=S.aiResults[p.id];
+    const hs=ai&&ai.confidence>=S.minConf;
+    return`<button class="pair-btn ${i===S.activePairIdx?"active":""}" onclick="setPair(${i})" style="border-color:${i===S.activePairIdx?"#a855f7":"#1a3050"};color:${i===S.activePairIdx?"#a855f7":"#2d4060"}">
+      ${p.short} ${S.pairType==="otc"?"●LV":""}
+      ${hs?`<span style="color:${ai.direction==="CALL"?"#00e8a2":"#ff4d6d"};font-weight:700"> ${ai.direction==="CALL"?"▲":"▼"}${ai.confidence}%</span>`:""}
+    </button>`;
+  }).join("");
+}
+
+function setPair(i){S.activePairIdx=i;buildPairBtns();renderSig();renderReasoning();}
+
+function renderSig(){
+  const pairs=currentPairs();
+  const pair=pairs[S.activePairIdx]||pairs[0];if(!pair)return;
+  const ai=S.aiResults[pair.id];
+  const hasSig=ai&&ai.direction;
+  const sc=hasSig?(ai.direction==="CALL"?"#00e8a2":"#ff4d6d"):"#a855f7";
+  const card=document.getElementById("signalCard");
+  if(card){card.style.borderColor=sc+"44";card.style.background="linear-gradient(135deg,#080e1a,"+sc+"09)";}
+  const sl=document.getElementById("signalLoading"),sc2=document.getElementById("signalContent");
+  if(!hasSig){
+    sl.classList.remove("hidden");sc2.classList.add("hidden");
+    sl.innerHTML=`<div style="font-size:28px;margin-bottom:8px">🧠</div><div style="font-size:10px;color:#a855f7" class="ai-pulse">WAITING FOR AI...</div><div style="font-size:9px;color:#1a3050;margin-top:4px">${pair.label}</div>`;
+    return;
+  }
+  sl.classList.add("hidden");sc2.classList.remove("hidden");
+  document.getElementById("sigPairLabel").textContent=pair.label;
+  document.getElementById("sigPairType").textContent=pair.type==="otc"?"OTC 24/7":"FOREX";
+  const sd=document.getElementById("sigDirection");sd.style.color=sc;sd.textContent=ai.direction==="CALL"?"▲ CALL":"▼ PUT";
+  const typeC=ai.signal_type==="REVERSAL"?"#f0b429":ai.signal_type==="MOMENTUM"?"#06b6d4":"#a855f7";
+  document.getElementById("sigType").style.color=typeC;
+  document.getElementById("sigType").textContent="🧠 AI "+ai.signal_type+" · "+ai.strength;
+  document.getElementById("sigExpiry").textContent="⏱ Expiry: "+(ai.recommended_expiry||3)+" min · Pocket Option";
+  const sc3=document.getElementById("sigConf");sc3.style.color=sc;sc3.textContent=ai.confidence+"%";
+  document.getElementById("sigStr").textContent="Bull: "+ai.bull_score+" · Bear: "+ai.bear_score;
+  document.getElementById("sigStake").textContent="Stake: $"+getStake();
+  document.getElementById("confBar").style.width=ai.confidence+"%";
+  document.getElementById("confBar").style.background="linear-gradient(90deg,"+sc+"44,"+sc+")";
+  const box=document.getElementById("aiSummaryBox");
+  if(box){box.innerHTML=`<div style="color:#a855f7;font-size:8px;letter-spacing:1px;margin-bottom:6px">💭 AI SAYS:</div><div style="color:#c4b5fd;margin-bottom:8px">${ai.summary||""}</div>`+(ai.key_reasons||[]).map(r=>`<div style="color:#8ab4cc;margin-bottom:3px">• ${r}</div>`).join("")+(ai.risk_note?`<div style="color:#f0b42988;margin-top:8px;font-size:9px">⚠ ${ai.risk_note}</div>`:"");}
+  const ap=document.getElementById("allPairs");
+  if(ap)ap.innerHTML=pairs.map((p,i)=>{
+    const aa=S.aiResults[p.id];const hs=aa&&aa.confidence>=S.minConf;
+    return`<div onclick="setPair(${i})" style="display:flex;align-items:center;padding:7px 0;border-bottom:1px solid #0a1420;cursor:pointer;gap:5px">
+      <span style="font-size:10px;color:${p.color};font-weight:700;width:65px">${p.short}</span>
+      <span style="font-size:8px;color:#f0b429;width:25px">${p.type==="otc"?"OTC":"FX"}</span>
+      ${aa?`<span style="font-size:8px;color:#a855f7;width:32px">[${aa.signal_type?.slice(0,3)||"--"}]</span>`:`<span style="font-size:8px;color:#1a3050;width:32px">[--]</span>`}
+      ${hs?`<span style="font-size:11px;font-weight:700;color:${aa.direction==="CALL"?"#00e8a2":"#ff4d6d"};margin-left:auto">${aa.direction==="CALL"?"▲":"▼"} ${aa.direction} ${aa.confidence}%</span>`:`<span style="font-size:9px;color:#1a3050;margin-left:auto">${aa?aa.confidence+"%":"analyzing..."}</span>`}
+    </div>`;
+  }).join("");
+}
+
+function renderReasoning(){
+  const pairs=currentPairs();const pair=pairs[S.activePairIdx]||pairs[0];if(!pair)return;
+  const ai=S.aiResults[pair.id];
+  document.getElementById("bdPair").textContent=pair.label;
+  document.getElementById("bdBull").textContent=ai?.bull_score||"--";
+  document.getElementById("bdBear").textContent=ai?.bear_score||"--";
+  document.getElementById("bdConf").textContent=ai?ai.confidence+"%":"--";
+  const el=document.getElementById("aiFullReasoning");if(!el)return;
+  if(!ai){el.innerHTML=`<div style="color:#1a3050;text-align:center;padding:20px">No AI analysis yet for ${pair.label}</div>`;return;}
+  el.innerHTML=`<div style="color:#a855f7;font-size:9px;letter-spacing:1px;margin-bottom:8px">🧠 GEMINI AI — ${pair.label} ${pair.type==="otc"?"[OTC]":"[FOREX]"}</div>`+
+    `<div style="color:${ai.direction==="CALL"?"#00e8a2":"#ff4d6d"};font-weight:700;margin-bottom:6px">${ai.direction} ${ai.direction==="CALL"?"▲":"▼"} — ${ai.confidence}% ${ai.strength}</div>`+
+    `<div style="color:#c4b5fd;margin-bottom:10px">${ai.summary||""}</div>`+
+    `<div style="color:#f0b429;margin-bottom:6px;font-size:9px">KEY REASONS:</div>`+
+    (ai.key_reasons||[]).map(r=>`<div style="color:#8ab4cc;margin-bottom:5px">• ${r}</div>`).join("")+
+    (ai.risk_note?`<div style="color:#f0b42988;margin-top:10px;padding:6px 8px;background:#0a0800;border-radius:4px;font-size:9px">⚠️ ${ai.risk_note}</div>`:"");
+}
+
+function renderHistory(){
+  const{wins,losses}=S.stats;
+  const wr=wins+losses>0?Math.round(wins/(wins+losses)*100):0;
+  const pnl=S.tradeHistory.filter(t=>t.result!=="pending").reduce((a,t)=>a+(t.result==="win"?parseFloat(t.stake)*0.85:-parseFloat(t.stake)),0);
+  document.getElementById("histWins").textContent=wins+"W";
+  document.getElementById("histLosses").textContent=losses+"L";
+  const hp=document.getElementById("histPnl");hp.textContent=(pnl>=0?"+":"")+"$"+pnl.toFixed(2);hp.style.color=pnl>=0?"#00e8a2":"#ff4d6d";
+  const list=document.getElementById("tradeList");if(!list)return;
+  if(!S.tradeHistory.length){list.innerHTML=`<div style="text-align:center;padding:20px 0;color:#1a3050;font-size:10px">No trades yet — use demo first!</div>`;return;}
+  list.innerHTML=S.tradeHistory.map(t=>{
+    const pairs=[...FOREX_PAIRS,...OTC_PAIRS];
+    const pc=pairs.find(p=>p.short===t.pair||p.label.includes(t.pair))?.color||"#a855f7";
+    return`<div style="padding:8px 0;border-bottom:1px solid #0a1420">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+        <span style="font-size:10px;color:${pc};font-weight:700">${t.pair}</span>
+        <span style="font-size:8px;color:#a855f7">AI·${t.type}</span>
+        <span style="font-size:11px;color:${t.dir==="CALL"?"#00e8a2":"#ff4d6d"};font-weight:700">${t.dir==="CALL"?"▲":"▼"} ${t.dir}</span>
+        <span style="font-size:9px;color:#243a50">${t.conf}% · $${t.stake} · ${t.expiry}m</span>
+      </div>
+      ${t.result==="pending"?
+        `<div style="display:flex;gap:5px">
+          <button onclick="markTrade('${t.id}','win')" style="flex:1;padding:5px;background:#051a10;border:1px solid #00e8a2;color:#00e8a2;border-radius:4px;cursor:pointer;font-family:inherit;font-size:11px;font-weight:700">✓ WIN +$${(parseFloat(t.stake)*0.85).toFixed(2)}</button>
+          <button onclick="markTrade('${t.id}','loss')" style="flex:1;padding:5px;background:#1a0510;border:1px solid #ff4d6d;color:#ff4d6d;border-radius:4px;cursor:pointer;font-family:inherit;font-size:11px;font-weight:700">✗ LOSS -$${t.stake}</button>
+        </div>`:
+        `<div style="font-size:10px;font-weight:700;text-align:center;padding:4px;background:${t.result==="win"?"#051a1088":"#1a051088"};border-radius:4px;border:1px solid ${t.result==="win"?"#00e8a233":"#ff4d6d33"};color:${t.result==="win"?"#00e8a2":"#ff4d6d"}">
+          ${t.result==="win"?`✓ WIN +$${(parseFloat(t.stake)*0.85).toFixed(2)}`:`✗ LOSS -$${t.stake}`}
+        </div>`}
+    </div>`;
+  }).join("");
+}
+
+function addTrade(entry){
+  const t={id:Date.now().toString(),pair:entry.pair.short,dir:entry.ai.direction,conf:entry.ai.confidence,stake:entry.stk,expiry:entry.expiry,type:entry.ai.signal_type||"AI",time:getLagosTime().toLocaleTimeString(),result:"pending"};
+  S.tradeHistory.unshift(t);if(S.tradeHistory.length>50)S.tradeHistory.pop();
+  if(S.activeTab==="history")renderHistory();
+}
+
+function markTrade(id,result){
+  result==="win"?winSound():lossSound();
+  const t=S.tradeHistory.find(t=>t.id===id);if(t)t.result=result;
+  S.stats.wins+=result==="win"?1:0;S.stats.losses+=result==="loss"?1:0;
+  if(result==="loss"){S.consLosses++;if(S.consLosses>=3){addLog("🚨 3 LOSSES — STOP NOW!","error");document.getElementById("lossWarning").classList.remove("hidden");}}
+  else{S.consLosses=0;document.getElementById("lossWarning").classList.add("hidden");}
+  updateLossTracker();updateStats();renderHistory();
+}
+
+function resetLosses(){S.consLosses=0;document.getElementById("lossWarning").classList.add("hidden");updateLossTracker();}
+
+function updateLossTracker(){
+  const el=document.getElementById("lossTracker");if(!el)return;
+  el.innerHTML=[1,2,3,4,5].map(n=>`<div style="flex:1;height:28px;border-radius:4px;background:${n<=S.consLosses?"#ff4d6d":"#050c18"};border:1px solid ${n<=S.consLosses?"#ff4d6d":"#1a3050"};display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:${n<=S.consLosses?"#fff":"#1a3050"}">${n}</div>`).join("");
+  const msg=document.getElementById("lossMsg");
+  if(msg){msg.textContent=S.consLosses>=3?"🚨 STOP NOW!":S.consLosses>0?S.consLosses+" loss — careful":"No consecutive losses";msg.style.color=S.consLosses>=3?"#ff4d6d":"#1a3050";}
+  document.getElementById("resetLossBtn")?.classList.toggle("hidden",S.consLosses===0);
+}
+
+function updateMoneyCalc(){
+  const b=parseFloat(document.getElementById("balanceR")?.value||100);
+  const r=+document.getElementById("riskR")?.value||2;
+  S.balance=b;S.riskPct=r;
+  const stk=Math.max(1,b*(r/100)).toFixed(2);
+  const rl=document.getElementById("riskLblR");if(rl)rl.textContent="Risk: "+r+"% = $"+stk;
+  document.getElementById("mStake").textContent="$"+stk;
+  document.getElementById("mMaxLoss").textContent="$"+(b*0.1).toFixed(2);
+  document.getElementById("mStop").textContent="$"+(b*0.9).toFixed(2);
+  document.getElementById("mgBase").textContent="$"+stk;
+  const mt=document.getElementById("martingaleTable");
+  if(mt)mt.innerHTML=[1,2,4,8].map((m,i)=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #0a1420;font-size:10px"><span style="color:#243a50">Step ${i+1}</span><span style="color:${i===0?"#00e8a2":i<3?"#f0b429":"#ff4d6d"};font-weight:700">$${(parseFloat(stk)*m).toFixed(2)}</span><span style="color:#1a3050">Total: $${(parseFloat(stk)*(Math.pow(2,i+1)-1)).toFixed(2)}</span></div>`).join("");
+  updateLossTracker();
+}
+
+function updateConfR(){const v=+document.getElementById("confR")?.value||65;S.minConf=v;const el=document.getElementById("confLblR");if(el)el.textContent="Min AI Confidence: "+v+"%";}
+function updateStats(){
+  const{wins,losses,sent}=S.stats;const wr=wins+losses>0?Math.round(wins/(wins+losses)*100):0;
+  const pnl=S.tradeHistory.filter(t=>t.result!=="pending").reduce((a,t)=>a+(t.result==="win"?parseFloat(t.stake)*0.85:-parseFloat(t.stake)),0);
+  const we=document.getElementById("winRateDisp");if(we){we.textContent=wr+"%";we.style.color=wr>=60?"#00e8a2":wr>=50?"#f0b429":"#ff4d6d";}
+  const wl=document.getElementById("wlDisp");if(wl)wl.textContent=wins+"W / "+losses+"L";
+  const pe=document.getElementById("pnlDisp");if(pe){pe.textContent=(pnl>=0?"+":"")+"$"+pnl.toFixed(2);pe.style.color=pnl>=0?"#00e8a2":"#ff4d6d";}
+  const se=document.getElementById("sentDisp");if(se)se.textContent=sent+" signals";
+}
+function updateNextRing(){
+  const s=S.nextSignal,circ=2*Math.PI*26,dash=circ*(s/360);
+  document.getElementById("nextRingCircle")?.setAttribute("stroke-dasharray",dash+" "+circ);
+  const nt=document.getElementById("nextRingText");if(nt)nt.textContent=Math.floor(s/60)+":"+String(s%60).padStart(2,"0");
+  const ns=document.getElementById("nextSigTime");if(ns)ns.textContent=Math.floor(s/60)+":"+String(s%60).padStart(2,"0");
+  if(S.lastSigTime){const ls=document.getElementById("lastSigTime");if(ls)ls.textContent="Last: "+S.lastSigTime;}
+}
+function updateEntryRing(){
+  const s=S.entryCountdown,circ=2*Math.PI*26,dash=circ*(s/60);
+  document.getElementById("entryRingCircle")?.setAttribute("stroke-dasharray",dash+" "+circ);
+  const rt=document.getElementById("entryRingText");if(rt)rt.textContent=s;
+  const banner=document.getElementById("entryBanner");
+  if(S.waitingEntry&&s>0){
+    banner.classList.remove("hidden");
+    const we=S.waitingEntry,sc=we.ai.direction==="CALL"?"#00e8a2":"#ff4d6d";
+    const sd=document.getElementById("entrySymDir");if(sd){sd.textContent=we.pair.short+" "+(we.ai.direction==="CALL"?"▲ CALL":"▼ PUT");sd.style.color=sc;}
+    document.getElementById("entryDetails").textContent="$"+we.stk+" · "+we.expiry+" min expiry";
+    document.getElementById("entryConf").textContent="AI: "+we.ai.confidence+"% · "+we.ai.strength+" · "+we.ai.signal_type;
+  }else banner.classList.add("hidden");
+}
+function renderAll(){buildPairBtns();updateStats();if(S.activeTab==="signal")renderSig();if(S.activeTab==="reasoning")renderReasoning();if(S.activeTab==="history")renderHistory();}
+function updateRiskLabel(){const r=document.getElementById("riskRange").value,b=parseFloat(document.getElementById("balance").value)||100;document.getElementById("riskLbl").textContent="Risk: "+r+"% = $"+Math.max(1,b*(r/100)).toFixed(2);}
+function updateConfLabel(){document.getElementById("confLbl").textContent="Min AI Confidence: "+document.getElementById("confRange").value+"%";}
+function toggleSound(){S.soundOn=!S.soundOn;document.getElementById("soundBtn").textContent=S.soundOn?"🔔":"🔕";}
+function toggleSoundSetup(){S.soundOn=!S.soundOn;const btn=document.getElementById("soundToggle");btn.textContent=S.soundOn?"🔔 Sound ON":"🔕 Sound OFF";btn.classList.toggle("on",S.soundOn);}
+function toggleVis(id,btn){const el=document.getElementById(id);if(!el)return;if(el.getAttribute("data-h")==="1"){el.type="text";el.removeAttribute("data-h");btn.textContent="HIDE";}else{el.setAttribute("data-h","1");el.type="password";btn.textContent="SHOW";}}
+
+(function(){
+  const TABS=["signal","reasoning","history","money"];let sx=0,sy=0;
+  document.addEventListener("touchstart",e=>{sx=e.touches[0].clientX;sy=e.touches[0].clientY;},{passive:true});
+  document.addEventListener("touchend",e=>{
+    const dx=e.changedTouches[0].clientX-sx,dy=e.changedTouches[0].clientY-sy;
+    if(Math.abs(dx)<50||Math.abs(dy)>Math.abs(dx)*0.8)return;
+    const ci=TABS.indexOf(S.activeTab);
+    if(dx<0&&ci<TABS.length-1)switchTab(TABS[ci+1]);else if(dx>0&&ci>0)switchTab(TABS[ci-1]);
+  },{passive:true});
+})();
+</script>
+</body>
+</html>

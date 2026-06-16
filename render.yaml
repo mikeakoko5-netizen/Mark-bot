@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: pocket-option-ai-bot
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    envVars:
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: TWELVE_API_KEY
+        sync: false

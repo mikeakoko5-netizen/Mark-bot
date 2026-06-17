@@ -13,7 +13,7 @@ CORS(app)
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 # Free model with no daily limit
-AI_MODEL = "google/gemini-2.5-flash"
+AI_MODEL = "openrouter/free"
 
 
 def get_twelve_candles(symbol, interval="5min", outputsize=100):

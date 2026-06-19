@@ -12,7 +12,8 @@ CORS(app)
 # OpenRouter - free AI access with much higher limits
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
-# Free model with no daily limit
+# openrouter/free automatically picks best available free model
+# Never gets 404, 200 requests/day free, no credit card needed
 AI_MODEL = "openrouter/free"
 
 
@@ -160,9 +161,10 @@ def build_prompt(market_data, pair, pair_type):
     prompt += "Session: " + str(market_data.get("session", "N/A")) + "\n\n"
     prompt += "Last 10 candles:\n" + str(market_data.get("candle_summary", "")) + "\n\n"
     prompt += note + "\n\n"
-    prompt += "Give a trading signal. Reply with ONLY this JSON, no markdown, no extra text:\n"
-    prompt += '{"direction":"CALL","confidence":70,"strength":"MODERATE","signal_type":"TREND","bull_score":6,"bear_score":3,"summary":"brief explanation","key_reasons":["reason1","reason2","reason3"],"risk_note":"brief risk","recommended_expiry":"3"}\n\n'
-    prompt += "Rules: direction=CALL or PUT, confidence=50-85, strength=STRONG/MODERATE/WEAK, signal_type=TREND/REVERSAL/MOMENTUM, recommended_expiry=1/3/5, no line breaks in strings, output raw JSON only"
+    prompt += "Give a trading signal. Reply with ONLY valid JSON matching this exact structure (these are field names and types, NOT example values to copy):\n"
+    prompt += '{"direction":"CALL or PUT","confidence":number 50-85,"strength":"STRONG or MODERATE or WEAK","signal_type":"TREND or REVERSAL or MOMENTUM","bull_score":number,"bear_score":number,"summary":"your own 2-3 sentence analysis of THIS specific market data","key_reasons":["specific reason from the data above","another specific reason","third specific reason"],"risk_note":"specific risk for this trade","recommended_expiry":"1 or 3 or 5"}\n\n'
+    prompt += "IMPORTANT: Do NOT copy the words 'brief explanation' or 'brief risk' literally. Write your own real analysis based on the actual price, RSI, MACD and trend values given above.\n"
+    prompt += "Rules: direction=CALL or PUT, confidence=50-85, strength=STRONG/MODERATE/WEAK, signal_type=TREND/REVERSAL/MOMENTUM, recommended_expiry=1/3/5, no line breaks in strings, output raw JSON only, no markdown"
     return prompt
 
 

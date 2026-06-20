@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -508,7 +509,15 @@ async function runAICycle(){
   const stk=getStake();
   const expiry=ai.recommended_expiry||"3";
   S.waitingEntry={pair,ai,stk,expiry,price:(S.liveData[pair.id]?.price||0)};
-  S.entryCountdown=60;
+  // Fix 4: align entry to the next 5-min candle boundary instead of a flat 60s,
+  // so "ENTER NOW" lines up with when a fresh candle actually opens
+  const nowLagos=getLagosTime();
+  const secsIntoCandle=(nowLagos.getMinutes()%5)*60+nowLagos.getSeconds();
+  let secsToNextCandle=300-secsIntoCandle;
+  if(secsToNextCandle<20)secsToNextCandle+=300; // too close to edge, wait for the one after
+  if(secsToNextCandle>90)secsToNextCandle=90; // cap wait so signal doesn't go stale
+  S.entryCountdown=secsToNextCandle;
+  S.entryCountdownMax=secsToNextCandle;
   S.lastSigTime=getLagosTime().toLocaleTimeString();
   S.activePairIdx=currentPairs().findIndex(p=>p.id===pair.id);
   S.stats.sent++;
@@ -783,7 +792,7 @@ function updateNextRing(){
   if(S.lastSigTime){const ls=document.getElementById("lastSigTime");if(ls)ls.textContent="Last: "+S.lastSigTime;}
 }
 function updateEntryRing(){
-  const s=S.entryCountdown,circ=2*Math.PI*26,dash=circ*(s/60);
+  const s=S.entryCountdown,circ=2*Math.PI*26,dash=circ*(s/(S.entryCountdownMax||60));
   document.getElementById("entryRingCircle")?.setAttribute("stroke-dasharray",dash+" "+circ);
   const rt=document.getElementById("entryRingText");if(rt)rt.textContent=s;
   const banner=document.getElementById("entryBanner");

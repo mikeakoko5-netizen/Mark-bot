@@ -12,9 +12,11 @@ CORS(app)
 # OpenRouter - free AI access with much higher limits
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
-# openrouter/free automatically picks best available free model
-# Never gets 404, 200 requests/day free, no credit card needed
-AI_MODEL = "openrouter/free"
+# Pinned to DeepSeek V3 - tested reliable for strict instruction-following (JSON output)
+# Avoids openrouter/free random routing which sometimes hits weak models that
+# copy example text literally instead of generating real analysis
+AI_MODEL = "deepseek/deepseek-chat-v3-0324:free"
+AI_MODEL_FALLBACK = "meta-llama/llama-3.3-70b-instruct:free"
 
 
 def get_twelve_candles(symbol, interval="5min", outputsize=100):
@@ -186,9 +188,118 @@ def extract_json(text):
     raise ValueError("No JSON found in AI response")
 
 
+# Fix 2: Reject signals where the AI's own reasoning undermines its confidence
+HEDGE_PHRASES = [
+    "unlikely", "unexpectedly", "range-bound", "range bound", "weak trend",
+    "trend remains weak", "could occur unexpectedly", "uncertain", "unclear",
+    "low confidence", "not confident", "choppy", "no clear", "lacks confirmation",
+    "conflicting signal", "mixed signal", "brief explanation", "brief risk",
+    "brief analysis", "example", "placeholder"
+]
+
+
+def validate_signal(signal):
+    """Returns (is_valid, reason) - rejects self-contradicting or template signals"""
+    summary = (signal.get("summary") or "").lower()
+    risk = (signal.get("risk_note") or "").lower()
+    combined = summary + " " + risk
+
+    for phrase in HEDGE_PHRASES:
+        if phrase in combined:
+            return False, "AI hedged its own signal (found: '" + phrase + "')"
+
+    # Reject literal template text
+    if summary.strip() in ("", "brief explanation", "your own 2-3 sentence analysis of this specific market data"):
+        return False, "AI returned template text instead of real analysis"
+
+    if len(summary.strip()) < 15:
+        return False, "AI summary too short to be real analysis"
+
+    # Bull/bear score sanity check vs direction
+    bull = signal.get("bull_score", 0)
+    bear = signal.get("bear_score", 0)
+    direction = signal.get("direction", "")
+    try:
+        bull, bear = float(bull), float(bear)
+        if direction == "CALL" and bear > bull:
+            return False, "Direction CALL but bear_score > bull_score (contradiction)"
+        if direction == "PUT" and bull > bear:
+            return False, "Direction PUT but bull_score > bear_score (contradiction)"
+        # Fix 3: require a clear margin, not a near-coin-flip score
+        total = bull + bear
+        if total > 0:
+            margin = abs(bull - bear) / total
+            if margin < 0.25:
+                return False, "Bull/bear scores too close (" + str(bull) + " vs " + str(bear) + ") - not enough agreement"
+    except (ValueError, TypeError):
+        pass
+
+    return True, "ok"
+
+
+def indicators_agree(market_data, direction):
+    """Fix 3: cross-check trend + RSI + MACD all point the same way as the AI direction"""
+    trend = (market_data.get("trend") or "").upper()
+    try:
+        rsi = float(market_data.get("rsi", 50))
+    except (ValueError, TypeError):
+        rsi = 50
+    try:
+        macd = float(market_data.get("macd_hist", 0))
+    except (ValueError, TypeError):
+        macd = 0
+
+    bull_votes = 0
+    bear_votes = 0
+
+    if "UP" in trend:
+        bull_votes += 1
+    elif "DOWN" in trend:
+        bear_votes += 1
+
+    if rsi > 52:
+        bull_votes += 1
+    elif rsi < 48:
+        bear_votes += 1
+
+    if macd > 0:
+        bull_votes += 1
+    elif macd < 0:
+        bear_votes += 1
+
+    if direction == "CALL" and bull_votes >= 2 and bull_votes > bear_votes:
+        return True, str(bull_votes) + "/3 indicators bullish"
+    if direction == "PUT" and bear_votes >= 2 and bear_votes > bull_votes:
+        return True, str(bear_votes) + "/3 indicators bearish"
+    return False, "Only " + str(max(bull_votes, bear_votes)) + "/3 indicators agree with AI direction"
+
+
 @app.route("/", methods=["GET"])
 def health():
     return jsonify({"status": "ok", "message": "PO AI Bot Server running! Powered by Gemini AI + Twelve Data"})
+
+
+def call_ai(prompt, model):
+    payload = json.dumps({
+        "model": model,
+        "messages": [{"role": "user", "content": prompt}],
+        "max_tokens": 500,
+        "temperature": 0.3
+    }).encode()
+    req = urllib.request.Request(
+        OPENROUTER_URL,
+        data=payload,
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + OPENROUTER_API_KEY,
+            "HTTP-Referer": "https://po-ai-bot.onrender.com",
+            "X-Title": "PO AI Bot"
+        },
+        method="POST"
+    )
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        result = json.loads(resp.read())
+    return result.get("choices", [{}])[0].get("message", {}).get("content", "")
 
 
 @app.route("/analyze", methods=["POST"])
@@ -200,7 +311,6 @@ def analyze():
         pair = data.get("pair", "EUR/USD")
         pair_type = data.get("pair_type", "forex")
 
-        # Fetch from Twelve Data if forex and no market data
         if pair_type == "forex" and not market_data.get("price"):
             try:
                 raw = get_twelve_candles(pair)
@@ -211,34 +321,20 @@ def analyze():
 
         prompt = build_prompt(market_data, pair, pair_type)
 
-        # Call OpenRouter API
-        payload = json.dumps({
-            "model": AI_MODEL,
-            "messages": [{"role": "user", "content": prompt}],
-            "max_tokens": 500,
-            "temperature": 0.3
-        }).encode()
-
-        req = urllib.request.Request(
-            OPENROUTER_URL,
-            data=payload,
-            headers={
-                "Content-Type": "application/json",
-                "Authorization": "Bearer " + OPENROUTER_API_KEY,
-                "HTTP-Referer": "https://po-ai-bot.onrender.com",
-                "X-Title": "PO AI Bot"
-            },
-            method="POST"
-        )
-
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            result = json.loads(resp.read())
-
-        # Extract text from OpenRouter response
-        raw_text = result.get("choices", [{}])[0].get("message", {}).get("content", "")
+        # Fix 1: try pinned model first, fall back to a second reliable model on failure
+        raw_text = ""
+        last_err = None
+        for model in [AI_MODEL, AI_MODEL_FALLBACK]:
+            try:
+                raw_text = call_ai(prompt, model)
+                if raw_text:
+                    break
+            except Exception as e:
+                last_err = e
+                continue
 
         if not raw_text:
-            return jsonify({"success": False, "error": "Empty response from AI", "full": str(result)}), 500
+            return jsonify({"success": False, "error": "Empty response from AI. Last error: " + str(last_err)}), 500
 
         try:
             signal = extract_json(raw_text)
@@ -248,6 +344,24 @@ def analyze():
                 "error": "JSON parse error: " + str(pe),
                 "raw": raw_text[:500]
             }), 500
+
+        # Fix 2: reject self-contradicting / template signals
+        is_valid, reason = validate_signal(signal)
+        if not is_valid:
+            return jsonify({
+                "success": False,
+                "error": "Signal rejected: " + reason,
+                "raw": raw_text[:300]
+            }), 200
+
+        # Fix 3: require trend + RSI + MACD to agree with AI's direction
+        agrees, detail = indicators_agree(market_data, signal.get("direction", ""))
+        if not agrees:
+            return jsonify({
+                "success": False,
+                "error": "Signal rejected: indicators disagree (" + detail + ")",
+                "raw": raw_text[:300]
+            }), 200
 
         return jsonify({"success": True, "signal": signal})
 
@@ -279,3 +393,4 @@ def telegram():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
+

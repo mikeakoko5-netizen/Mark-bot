@@ -1,4 +1,4 @@
-
+ 
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -492,12 +492,12 @@ async function runAICycle(){
       marketData=computeOTCMarketData(pair);
     }
     const ai=await analyzeWithAI(pair,marketData);
-    if(!ai){if(i<pairs.length-1)await new Promise(r=>setTimeout(r,4000));continue;}
+    if(!ai){if(i<pairs.length-1)await new Promise(r=>setTimeout(r,7000));continue;}
     S.aiResults[pair.id]=ai;
     addLog("🤖 "+pair.short+": "+ai.direction+" "+ai.confidence+"% ["+ai.signal_type+"]","info");
     if(ai.confidence>=S.minConf)candidates.push({pair,ai});
     else addLog("⏭ "+pair.short+": "+ai.confidence+"% < "+S.minConf+"%","warn");
-    if(i<pairs.length-1)await new Promise(r=>setTimeout(r,4000));
+    if(i<pairs.length-1)await new Promise(r=>setTimeout(r,7000));
   }
   document.getElementById("thinkingBanner").classList.add("hidden");
   if(!candidates.length){addLog("📊 No qualifying AI signals","info");renderAll();return;}

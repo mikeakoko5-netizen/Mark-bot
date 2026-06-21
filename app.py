@@ -12,11 +12,11 @@ CORS(app)
 # OpenRouter - free AI access with much higher limits
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
-# Pinned to DeepSeek V3 - tested reliable for strict instruction-following (JSON output)
-# Avoids openrouter/free random routing which sometimes hits weak models that
-# copy example text literally instead of generating real analysis
+# Fix 1: try multiple free models in order - if one returns 402 (became paid)
+# or 429 (rate limited), automatically fall through to the next
 AI_MODEL = "deepseek/deepseek-chat-v3-0324:free"
 AI_MODEL_FALLBACK = "meta-llama/llama-3.3-70b-instruct:free"
+AI_MODEL_FALLBACK2 = "qwen/qwen-2.5-7b-instruct:free"
 
 
 def get_twelve_candles(symbol, interval="5min", outputsize=100):
@@ -301,7 +301,6 @@ def call_ai(prompt, model):
         result = json.loads(resp.read())
     return result.get("choices", [{}])[0].get("message", {}).get("content", "")
 
-
 @app.route("/analyze", methods=["POST"])
 def analyze():
     raw_text = ""
@@ -321,16 +320,20 @@ def analyze():
 
         prompt = build_prompt(market_data, pair, pair_type)
 
-        # Fix 1: try pinned model first, fall back to a second reliable model on failure
+        # Fix 1: try each free model in order; on 402 (became paid) or 429 (rate
+        # limited) or any error, automatically move to the next one
         raw_text = ""
         last_err = None
-        for model in [AI_MODEL, AI_MODEL_FALLBACK]:
+        for model in [AI_MODEL, AI_MODEL_FALLBACK, AI_MODEL_FALLBACK2]:
             try:
                 raw_text = call_ai(prompt, model)
                 if raw_text:
                     break
+            except urllib.error.HTTPError as e:
+                last_err = "HTTP " + str(e.code) + " on " + model
+                continue
             except Exception as e:
-                last_err = e
+                last_err = str(e) + " on " + model
                 continue
 
         if not raw_text:

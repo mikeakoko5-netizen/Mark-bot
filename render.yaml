@@ -5,7 +5,8 @@ services:
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn app:app
     envVars:
-      - key: OPENROUTER_API_KEY
+      - key: GROQ_API_KEY
         sync: false
       - key: TWELVE_API_KEY
         sync: false
+

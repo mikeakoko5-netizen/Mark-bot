@@ -12,10 +12,14 @@ CORS(app)
 # OpenRouter - free AI access with much higher limits
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
-# openrouter/free is OpenRouter's own router - it automatically picks from
-# whatever free models are currently available, so it self-heals when
-# individual model slugs get renamed, removed, or go paid (which happens often)
-AI_MODEL = "openrouter/free"
+# Groq: 14,400 requests/day FREE, no credit card, no safety blocks on trading prompts
+# OpenAI-compatible API - just different base URL and key
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
+GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
+# llama-3.3-70b-versatile: best quality, 1000 req/day free
+# llama-3.1-8b-instant: faster, 14400 req/day free (fallback)
+AI_MODEL = "llama-3.3-70b-versatile"
+AI_MODEL_FALLBACK = "llama-3.1-8b-instant"
 
 
 def get_twelve_candles(symbol, interval="5min", outputsize=100):
@@ -286,13 +290,11 @@ def call_ai(prompt, model):
         "temperature": 0.3
     }).encode()
     req = urllib.request.Request(
-        OPENROUTER_URL,
+        GROQ_URL,
         data=payload,
         headers={
             "Content-Type": "application/json",
-            "Authorization": "Bearer " + OPENROUTER_API_KEY,
-            "HTTP-Referer": "https://po-ai-bot.onrender.com",
-            "X-Title": "PO AI Bot"
+            "Authorization": "Bearer " + GROQ_API_KEY
         },
         method="POST"
     )
@@ -319,17 +321,16 @@ def analyze():
 
         prompt = build_prompt(market_data, pair, pair_type)
 
-        # openrouter/free handles model selection internally. We still retry
-        # once in case of a transient error (busy provider, brief rate limit)
+        # Try primary model first, fall back to faster 8B on rate limit
         raw_text = ""
         last_err = None
-        for attempt in range(2):
+        for attempt, model in enumerate([AI_MODEL, AI_MODEL_FALLBACK]):
             try:
-                raw_text = call_ai(prompt, AI_MODEL)
+                raw_text = call_ai(prompt, model)
                 if raw_text:
                     break
             except urllib.error.HTTPError as e:
-                last_err = "HTTP " + str(e.code)
+                last_err = "HTTP " + str(e.code) + " on " + model
                 if attempt == 0:
                     import time
                     time.sleep(3)

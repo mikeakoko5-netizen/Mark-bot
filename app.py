@@ -12,11 +12,10 @@ CORS(app)
 # OpenRouter - free AI access with much higher limits
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
-# Fix 1: try multiple free models in order - if one returns 402 (became paid)
-# or 429 (rate limited), automatically fall through to the next
+# openrouter/free is OpenRouter's own router - it automatically picks from
+# whatever free models are currently available, so it self-heals when
+# individual model slugs get renamed, removed, or go paid (which happens often)
 AI_MODEL = "openrouter/free"
-AI_MODEL_FALLBACK = "meta-llama/llama-3.3-70b-instruct:free"
-AI_MODEL_FALLBACK2 = "qwen/qwen-2.5-7b-instruct:free"
 
 
 def get_twelve_candles(symbol, interval="5min", outputsize=100):
@@ -320,20 +319,23 @@ def analyze():
 
         prompt = build_prompt(market_data, pair, pair_type)
 
-        # Fix 1: try each free model in order; on 402 (became paid) or 429 (rate
-        # limited) or any error, automatically move to the next one
+        # openrouter/free handles model selection internally. We still retry
+        # once in case of a transient error (busy provider, brief rate limit)
         raw_text = ""
         last_err = None
-        for model in [AI_MODEL, AI_MODEL_FALLBACK, AI_MODEL_FALLBACK2]:
+        for attempt in range(2):
             try:
-                raw_text = call_ai(prompt, model)
+                raw_text = call_ai(prompt, AI_MODEL)
                 if raw_text:
                     break
             except urllib.error.HTTPError as e:
-                last_err = "HTTP " + str(e.code) + " on " + model
+                last_err = "HTTP " + str(e.code)
+                if attempt == 0:
+                    import time
+                    time.sleep(3)
                 continue
             except Exception as e:
-                last_err = str(e) + " on " + model
+                last_err = str(e)
                 continue
 
         if not raw_text:
@@ -396,4 +398,3 @@ def telegram():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
-

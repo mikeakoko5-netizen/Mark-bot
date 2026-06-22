@@ -14,7 +14,7 @@ OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 # Fix 1: try multiple free models in order - if one returns 402 (became paid)
 # or 429 (rate limited), automatically fall through to the next
-AI_MODEL = "deepseek/deepseek-chat-v3-0324:free"
+AI_MODEL = "openrouter/free"
 AI_MODEL_FALLBACK = "meta-llama/llama-3.3-70b-instruct:free"
 AI_MODEL_FALLBACK2 = "qwen/qwen-2.5-7b-instruct:free"
 

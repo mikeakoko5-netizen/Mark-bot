@@ -18,8 +18,8 @@ GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 # llama-3.3-70b-versatile: best quality, 1000 req/day free
 # llama-3.1-8b-instant: faster, 14400 req/day free (fallback)
-AI_MODEL = "llama-3.1-8b-instant"
-AI_MODEL_FALLBACK = "llama-3.1-8b-instant"
+AI_MODEL = "llama-3.3-70b-versatile"
+AI_MODEL_FALLBACK = "llama3-8b-8192"
 
 
 

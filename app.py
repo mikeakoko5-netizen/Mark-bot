@@ -16,11 +16,9 @@ OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 # OpenAI-compatible API - just different base URL and key
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
-# llama-3.3-70b-versatile: best quality, 1000 req/day free
-# llama-3.1-8b-instant: faster, 14400 req/day free (fallback)
+# Groq free tier - verified model names June 2026
 AI_MODEL = "llama-3.3-70b-versatile"
 AI_MODEL_FALLBACK = "llama3-8b-8192"
-
 
 
 def get_twelve_candles(symbol, interval="5min", outputsize=100):
@@ -400,3 +398,4 @@ def telegram():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
+

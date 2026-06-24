@@ -18,7 +18,7 @@ GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 # Groq free tier - verified model names June 2026
 AI_MODEL = "llama-3.3-70b-versatile"
-AI_MODEL_FALLBACK = "llama3-8b-8192"
+AI_MODEL_FALLBACK = "llama-3.1-8b-instant"
 
 
 def get_twelve_candles(symbol, interval="5min", outputsize=100):

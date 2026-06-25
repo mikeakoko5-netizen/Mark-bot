@@ -16,7 +16,7 @@ OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 # OpenAI-compatible API - just different base URL and key
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
-# Groq free tier - verified model names June 2026
+# Groq allowed models - verified from account settings
 AI_MODEL = "llama-3.3-70b-versatile"
 AI_MODEL_FALLBACK = "llama-3.1-8b-instant"
 
@@ -399,3 +399,5 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
 
+
+    

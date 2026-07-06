@@ -1,0 +1,1544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VOLT — Deriv Synthetics Analyzer</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:      #111318;
+  --bg2:     #16191F;
+  --bg3:     #1C2028;
+  --bg4:     #232830;
+  --violet:  #7B2FFF;
+  --violet2: #9B5FFF;
+  --violet-dim: rgba(123,47,255,0.15);
+  --mint:    #00FFB2;
+  --mint-dim:rgba(0,255,178,0.12);
+  --pink:    #FF2D78;
+  --pink-dim:rgba(255,45,120,0.12);
+  --amber:   #FF9500;
+  --amber-dim:rgba(255,149,0,0.12);
+  --text:    #E8EBF2;
+  --muted:   #5A6178;
+  --border:  rgba(123,47,255,0.12);
+  --border2: rgba(123,47,255,0.28);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:'Space Grotesk',sans-serif;min-height:100vh;overflow-x:hidden;}
+.mono{font-family:'IBM Plex Mono',monospace;}
+
+/* ── Heartbeat bar (signature element) ── */
+.heartbeat-wrap{padding:0 16px;margin-bottom:4px;}
+.heartbeat-track{height:36px;background:var(--bg2);border-radius:6px;overflow:hidden;position:relative;border:1px solid var(--border);}
+.heartbeat-canvas{width:100%;height:100%;display:block;}
+
+/* ── Header ── */
+header{padding:18px 16px 10px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);margin-bottom:14px;}
+.brand{display:flex;align-items:center;gap:10px;}
+.volt-logo{
+  width:38px;height:38px;background:var(--violet);border-radius:8px;
+  display:flex;align-items:center;justify-content:center;
+  font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:0.8rem;color:#fff;
+  box-shadow:0 0 18px rgba(123,47,255,0.45);
+}
+.brand-name{font-size:1.25rem;font-weight:700;letter-spacing:0.04em;color:var(--text);}
+.brand-name span{color:var(--violet2);}
+.live-chip{
+  display:flex;align-items:center;gap:5px;
+  background:var(--mint-dim);border:1px solid var(--mint);
+  border-radius:20px;padding:4px 10px;
+  font-size:0.62rem;font-weight:600;color:var(--mint);letter-spacing:0.08em;
+}
+.live-dot{width:5px;height:5px;border-radius:50%;background:var(--mint);animation:blink 1.2s step-end infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+
+/* ── Index selector ── */
+.section-label{font-size:0.62rem;font-weight:600;letter-spacing:0.12em;color:var(--muted);text-transform:uppercase;margin-bottom:8px;padding:0 16px;}
+.index-row{display:flex;gap:8px;padding:0 16px;margin-bottom:16px;overflow-x:auto;scrollbar-width:none;}
+.index-row::-webkit-scrollbar{display:none;}
+.index-btn{
+  flex:0 0 auto;
+  background:var(--bg3);border:1.5px solid var(--border);border-radius:10px;
+  padding:12px 16px;cursor:pointer;transition:all 0.2s;text-align:center;min-width:90px;
+}
+.index-btn:hover{border-color:var(--violet);background:var(--violet-dim);}
+.index-btn.active{border-color:var(--violet);background:var(--violet-dim);box-shadow:0 0 16px rgba(123,47,255,0.2);}
+.index-btn .ib-name{font-family:'IBM Plex Mono',monospace;font-size:0.9rem;font-weight:600;color:var(--text);display:block;}
+.index-btn .ib-vol{font-size:0.6rem;color:var(--muted);margin-top:2px;display:block;}
+.index-btn.active .ib-name{color:var(--violet2);}
+.index-btn.active .ib-vol{color:var(--violet);}
+
+/* ── Timeframe ── */
+.tf-row{display:flex;gap:6px;padding:0 16px;margin-bottom:18px;}
+.tf-btn{
+  flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:7px;
+  padding:8px 0;font-family:'IBM Plex Mono',monospace;font-size:0.75rem;
+  color:var(--muted);cursor:pointer;transition:all 0.2s;text-align:center;
+}
+.tf-btn.active{border-color:var(--amber);color:var(--amber);background:var(--amber-dim);}
+.tf-btn:hover:not(.active){border-color:var(--violet);color:var(--violet2);}
+
+/* ── Risk inputs ── */
+.risk-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0 16px;margin-bottom:16px;}
+.risk-input-wrap{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 12px;}
+.risk-input-label{font-size:0.6rem;color:var(--muted);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:4px;}
+.risk-input{width:100%;background:transparent;border:none;outline:none;font-family:'IBM Plex Mono',monospace;font-size:0.88rem;color:var(--text);}
+
+/* ── Analyze button ── */
+.analyze-wrap{padding:0 16px;margin-bottom:20px;}
+.analyze-btn{
+  width:100%;padding:15px;
+  background:linear-gradient(135deg,var(--violet) 0%,#5500CC 100%);
+  border:none;border-radius:10px;
+  font-family:'Space Grotesk',sans-serif;font-size:0.95rem;font-weight:700;
+  color:#fff;cursor:pointer;letter-spacing:0.04em;
+  transition:all 0.2s;box-shadow:0 0 24px rgba(123,47,255,0.3);
+}
+.analyze-btn:hover{transform:translateY(-2px);box-shadow:0 0 36px rgba(123,47,255,0.5);}
+.analyze-btn:active{transform:translateY(0);}
+.analyze-btn:disabled{opacity:0.45;cursor:not-allowed;transform:none;}
+
+/* ── Volatility profile card ── */
+.vol-profile{margin:0 16px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px 16px;}
+.vp-title{font-size:0.62rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;}
+.vp-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.vp-item{background:var(--bg3);border-radius:7px;padding:8px 10px;}
+.vp-label{font-size:0.58rem;color:var(--muted);margin-bottom:3px;}
+.vp-val{font-family:'IBM Plex Mono',monospace;font-size:0.8rem;font-weight:500;color:var(--violet2);}
+
+/* ── Signal card ── */
+.signal-card{margin:0 16px 14px;border-radius:14px;padding:20px;border:2px solid;transition:all 0.4s;}
+.signal-card.buy {background:var(--mint-dim);border-color:var(--mint);}
+.signal-card.sell{background:var(--pink-dim);border-color:var(--pink);}
+.signal-card.wait{background:var(--amber-dim);border-color:var(--amber);}
+.signal-card.idle{background:var(--bg2);border-color:var(--border);}
+.sc-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.sc-dir{font-family:'IBM Plex Mono',monospace;font-size:1.6rem;font-weight:700;letter-spacing:0.04em;}
+.sc-dir.buy{color:var(--mint);}
+.sc-dir.sell{color:var(--pink);}
+.sc-dir.wait{color:var(--amber);}
+.sc-dir.idle{color:var(--muted);}
+.win-prob{text-align:right;}
+.wp-label{font-size:0.6rem;color:var(--muted);margin-bottom:2px;}
+.wp-val{font-family:'IBM Plex Mono',monospace;font-size:1.3rem;font-weight:700;}
+.wp-val.buy{color:var(--mint);}
+.wp-val.sell{color:var(--pink);}
+.wp-val.wait{color:var(--amber);}
+.sc-reason{font-size:0.75rem;color:var(--text);opacity:0.85;line-height:1.5;margin-bottom:14px;}
+.sc-levels{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;}
+.sc-level{background:rgba(0,0,0,0.25);border-radius:7px;padding:8px;}
+.sl-label{font-size:0.58rem;color:var(--muted);margin-bottom:3px;}
+.sl-val{font-family:'IBM Plex Mono',monospace;font-size:0.78rem;font-weight:600;}
+.sl-val.entry{color:var(--violet2);}
+.sl-val.sl{color:var(--pink);}
+.sl-val.tp{color:var(--mint);}
+
+/* ── Win probability bar ── */
+.prob-bar-wrap{margin:0 16px 14px;}
+.pb-header{display:flex;justify-content:space-between;margin-bottom:6px;font-size:0.62rem;color:var(--muted);}
+.pb-track{height:6px;background:var(--bg3);border-radius:3px;overflow:hidden;}
+.pb-fill{height:100%;border-radius:3px;transition:width 0.8s ease;}
+.pb-fill.buy{background:linear-gradient(90deg,var(--violet),var(--mint));}
+.pb-fill.sell{background:linear-gradient(90deg,var(--violet),var(--pink));}
+.pb-fill.wait{background:var(--amber);}
+
+/* ── Indicator panels ── */
+.panels{padding:0 16px;display:flex;flex-direction:column;gap:10px;margin-bottom:16px;}
+.panel{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px 16px;}
+.panel-title{font-size:0.62rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:12px;display:flex;align-items:center;gap:6px;}
+.panel-title::before{content:'';display:block;width:3px;height:12px;border-radius:2px;background:var(--violet);}
+
+/* Indicator rows */
+.ind-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04);}
+.ind-row:last-child{border-bottom:none;}
+.ir-left{display:flex;flex-direction:column;gap:2px;}
+.ir-name{font-family:'IBM Plex Mono',monospace;font-size:0.7rem;color:var(--muted);}
+.ir-desc{font-size:0.62rem;color:rgba(255,255,255,0.35);}
+.ir-right{text-align:right;}
+.ir-val{font-family:'IBM Plex Mono',monospace;font-size:0.78rem;font-weight:600;}
+.ir-val.bull{color:var(--mint);}
+.ir-val.bear{color:var(--pink);}
+.ir-val.neut{color:var(--amber);}
+.ir-val.dim{color:var(--muted);}
+.ir-sig{font-size:0.6rem;margin-top:1px;}
+.ir-sig.bull{color:var(--mint);}
+.ir-sig.bear{color:var(--pink);}
+.ir-sig.neut{color:var(--amber);}
+
+/* Patterns */
+.pattern-item{padding:8px 10px;background:var(--bg3);border-radius:7px;margin-bottom:6px;border-left:3px solid;}
+.pattern-item.buy{border-color:var(--mint);}
+.pattern-item.sell{border-color:var(--pink);}
+.pattern-item.wait{border-color:var(--amber);}
+.pi-name{font-size:0.72rem;font-weight:600;margin-bottom:2px;}
+.pi-name.buy{color:var(--mint);}
+.pi-name.sell{color:var(--pink);}
+.pi-name.wait{color:var(--amber);}
+.pi-desc{font-size:0.62rem;color:var(--muted);line-height:1.4;}
+.no-pattern{font-size:0.7rem;color:var(--muted);text-align:center;padding:12px 0;}
+
+/* Risk card grid */
+.risk-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.rg-item{background:var(--bg3);border-radius:7px;padding:10px;}
+.rg-label{font-size:0.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;}
+.rg-val{font-family:'IBM Plex Mono',monospace;font-size:0.85rem;font-weight:600;}
+.rg-val.violet{color:var(--violet2);}
+.rg-val.mint{color:var(--mint);}
+.rg-val.pink{color:var(--pink);}
+.rg-val.amber{color:var(--amber);}
+
+/* Warnings */
+.warning-item{display:flex;gap:8px;align-items:flex-start;padding:8px 10px;background:var(--amber-dim);border:1px solid rgba(255,149,0,0.2);border-radius:7px;margin-bottom:6px;}
+.wi-icon{color:var(--amber);font-size:0.8rem;flex-shrink:0;margin-top:1px;}
+.wi-text{font-size:0.68rem;color:var(--amber);line-height:1.5;}
+
+/* Reasoning */
+.reason-item{display:flex;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04);}
+.reason-item:last-child{border-bottom:none;}
+.ri-num{font-family:'IBM Plex Mono',monospace;font-size:0.65rem;color:var(--violet);flex-shrink:0;margin-top:1px;}
+.ri-text{font-size:0.7rem;color:var(--text);opacity:0.8;line-height:1.5;}
+
+/* Thinking */
+.thinking{display:flex;align-items:center;gap:10px;padding:20px 16px;}
+.th-dots span{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--violet);margin-right:4px;animation:tdot 1.2s ease infinite;}
+.th-dots span:nth-child(2){animation-delay:0.2s;}
+.th-dots span:nth-child(3){animation-delay:0.4s;}
+@keyframes tdot{0%,60%,100%{transform:translateY(0);opacity:0.4}30%{transform:translateY(-7px);opacity:1}}
+.th-label{font-size:0.72rem;color:var(--violet2);}
+
+/* Countdown */
+.countdown{margin:0 16px 14px;background:var(--bg2);border:1px solid rgba(123,47,255,0.4);border-radius:10px;padding:12px 16px;display:none;align-items:center;gap:12px;}
+.countdown.show{display:flex;}
+.cd-meta{flex:1;}
+.cd-label{font-size:0.65rem;color:var(--muted);margin-bottom:3px;}
+.cd-time{font-family:'IBM Plex Mono',monospace;font-size:1.1rem;font-weight:700;color:var(--violet2);}
+.cd-track{height:3px;background:var(--bg3);border-radius:2px;margin-top:5px;overflow:hidden;}
+.cd-fill{height:100%;background:linear-gradient(90deg,var(--violet),var(--violet2));transition:width 1s linear;}
+.cd-cancel{background:var(--bg3);border:1px solid var(--border);border-radius:5px;padding:5px 10px;font-size:0.65rem;color:var(--muted);cursor:pointer;}
+.cd-cancel:hover{border-color:var(--pink);color:var(--pink);}
+
+/* Telegram section */
+.tg-wrap{padding:0 16px;margin-bottom:16px;}
+.tg-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px;}
+.tg-toggle-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:0;cursor:pointer;}
+.tg-toggle-label{font-size:0.75rem;font-weight:500;color:var(--text);}
+.tg-switch{width:38px;height:21px;background:var(--bg4);border:1px solid var(--border);border-radius:11px;position:relative;transition:all 0.2s;}
+.tg-switch.on{background:rgba(123,47,255,0.4);border-color:var(--violet);}
+.tg-switch::after{content:'';position:absolute;width:15px;height:15px;border-radius:50%;background:var(--muted);top:2px;left:2px;transition:all 0.2s;}
+.tg-switch.on::after{background:var(--violet2);left:20px;}
+.tg-fields{display:none;margin-top:12px;}
+.tg-fields.show{display:block;}
+.tg-input{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:7px;padding:9px 12px;font-family:'IBM Plex Mono',monospace;font-size:0.75rem;color:var(--text);outline:none;margin-bottom:8px;}
+.tg-input:focus{border-color:var(--violet);}
+.tg-test-btn{width:100%;padding:9px;background:rgba(123,47,255,0.2);border:1px solid var(--violet);border-radius:7px;font-family:'Space Grotesk',sans-serif;font-size:0.75rem;font-weight:600;color:var(--violet2);cursor:pointer;transition:all 0.2s;}
+.tg-test-btn:hover{background:rgba(123,47,255,0.35);}
+.tg-status{font-size:0.65rem;font-family:'IBM Plex Mono',monospace;text-align:center;margin-top:6px;min-height:14px;}
+.tg-status.ok{color:var(--mint);}
+.tg-status.err{color:var(--pink);}
+.tg-status.info{color:var(--violet2);}
+
+/* Empty state */
+.empty-state{padding:40px 16px;text-align:center;}
+.es-icon{font-size:2.5rem;margin-bottom:10px;}
+.es-title{font-size:0.9rem;font-weight:600;color:var(--text);margin-bottom:6px;}
+.es-sub{font-size:0.72rem;color:var(--muted);line-height:1.6;}
+
+/* Footer */
+/* Trade log */
+.log-wrap{padding:0 16px;margin-bottom:24px;}
+.log-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px;}
+.log-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+.log-stats{display:flex;gap:10px;font-size:0.65rem;}
+.ls-item{text-align:center;}
+.ls-val{font-family:'IBM Plex Mono',monospace;font-size:0.9rem;font-weight:700;display:block;}
+.ls-val.mint{color:var(--mint);} .ls-val.pink{color:var(--pink);} .ls-val.amber{color:var(--amber);}
+.ls-label{color:var(--muted);font-size:0.58rem;}
+.log-clear{font-size:0.62rem;color:var(--muted);background:var(--bg3);border:1px solid var(--border);border-radius:5px;padding:3px 8px;cursor:pointer;}
+.log-clear:hover{color:var(--pink);border-color:var(--pink);}
+.log-entry{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:0.68rem;}
+.log-entry:last-child{border-bottom:none;}
+.le-dir{font-family:'IBM Plex Mono',monospace;font-weight:700;min-width:38px;}
+.le-dir.buy{color:var(--mint);} .le-dir.sell{color:var(--pink);}
+.le-index{color:var(--violet2);font-family:'IBM Plex Mono',monospace;min-width:36px;}
+.le-time{color:var(--muted);flex:1;}
+.le-score{font-family:'IBM Plex Mono',monospace;color:var(--muted);min-width:42px;}
+.le-result{font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:0.65rem;padding:2px 7px;border-radius:4px;cursor:pointer;}
+.le-result.win{background:var(--mint-dim);color:var(--mint);}
+.le-result.lose{background:var(--pink-dim);color:var(--pink);}
+.le-result.pending{background:var(--amber-dim);color:var(--amber);}
+.log-empty{font-size:0.7rem;color:var(--muted);text-align:center;padding:16px 0;}
+
+/* Auto-analyze bar */
+.auto-bar{margin:0 16px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;display:flex;align-items:center;gap:12px;}
+.auto-toggle{display:flex;align-items:center;gap:8px;flex:1;cursor:pointer;}
+.auto-label{font-size:0.75rem;font-weight:500;color:var(--text);}
+.auto-sub{font-size:0.6rem;color:var(--muted);margin-top:1px;}
+.auto-switch{width:42px;height:23px;background:var(--bg4);border:1px solid var(--border);border-radius:12px;position:relative;transition:all 0.2s;flex-shrink:0;}
+.auto-switch.on{background:rgba(123,47,255,0.5);border-color:var(--violet);}
+.auto-switch::after{content:'';position:absolute;width:17px;height:17px;border-radius:50%;background:var(--muted);top:2px;left:2px;transition:all 0.2s;}
+.auto-switch.on::after{background:var(--violet2);left:21px;}
+.auto-next{text-align:right;}
+.an-label{font-size:0.58rem;color:var(--muted);margin-bottom:2px;}
+.an-time{font-family:'IBM Plex Mono',monospace;font-size:1rem;font-weight:700;color:var(--violet2);}
+.auto-ring{width:36px;height:36px;position:relative;flex-shrink:0;}
+.auto-ring svg{transform:rotate(-90deg);}
+.ar-bg{fill:none;stroke:var(--bg3);stroke-width:3;}
+.ar-fill{fill:none;stroke:var(--violet);stroke-width:3;stroke-linecap:round;transition:stroke-dashoffset 1s linear;}
+
+/* 3-panel scan summary */
+.scan-summary { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; padding:0 16px; margin-bottom:14px; }
+.ss-card { background:var(--bg2); border:1.5px solid var(--border); border-radius:10px; padding:10px 8px; text-align:center; transition:all 0.3s; }
+.ss-card.buy  { border-color:var(--mint);  background:var(--mint-dim); }
+.ss-card.sell { border-color:var(--pink);  background:var(--pink-dim); }
+.ss-card.wait { border-color:var(--border);background:var(--bg2); }
+.ss-card.best { box-shadow:0 0 18px rgba(123,47,255,0.4); border-color:var(--violet2); }
+.ss-index { font-family:'IBM Plex Mono',monospace; font-size:0.72rem; font-weight:700; color:var(--muted); margin-bottom:4px; }
+.ss-signal { font-family:'IBM Plex Mono',monospace; font-size:0.9rem; font-weight:700; }
+.ss-signal.buy  { color:var(--mint); }
+.ss-signal.sell { color:var(--pink); }
+.ss-signal.wait { color:var(--muted); }
+.ss-prob  { font-size:0.62rem; color:var(--muted); margin-top:2px; }
+.ss-regime{ font-size:0.55rem; color:var(--muted); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.best-badge { font-size:0.55rem; background:var(--violet); color:#fff; border-radius:4px; padding:1px 5px; margin-top:3px; display:inline-block; }
+
+/* Best signal banner */
+.best-banner { margin:0 16px 14px; border-radius:12px; padding:14px 16px; border:2px solid var(--violet); background:var(--violet-dim); }
+.bb-label { font-size:0.6rem; font-weight:600; letter-spacing:0.1em; color:var(--violet2); text-transform:uppercase; margin-bottom:6px; }
+.bb-main  { display:flex; align-items:center; justify-content:space-between; }
+.bb-dir   { font-family:'IBM Plex Mono',monospace; font-size:1.4rem; font-weight:700; }
+.bb-dir.buy { color:var(--mint); } .bb-dir.sell { color:var(--pink); } .bb-dir.wait { color:var(--muted); }
+.bb-meta  { text-align:right; }
+.bb-index { font-family:'IBM Plex Mono',monospace; font-size:0.9rem; font-weight:700; color:var(--violet2); }
+.bb-conf  { font-size:0.65rem; color:var(--muted); margin-top:2px; }
+
+/* Scanning loader per index */
+.scan-loading { display:flex; flex-direction:column; gap:8px; padding:16px; }
+.sl-row { display:flex; align-items:center; gap:10px; padding:8px 12px; background:var(--bg2); border-radius:8px; border:1px solid var(--border); }
+.sl-index { font-family:'IBM Plex Mono',monospace; font-size:0.78rem; font-weight:600; color:var(--violet2); min-width:44px; }
+.sl-status { font-size:0.68rem; color:var(--muted); }
+.sl-dot { width:6px; height:6px; border-radius:50%; background:var(--muted); flex-shrink:0; }
+.sl-dot.scanning { background:var(--violet); animation:pulse 1s ease infinite; }
+.sl-dot.done { background:var(--mint); animation:none; }
+.sl-dot.error { background:var(--pink); animation:none; }
+@keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.3} }
+
+footer{padding:16px;text-align:center;font-size:0.6rem;color:var(--muted);border-top:1px solid var(--border);margin-top:8px;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="volt-logo">⚡</div>
+    <div class="brand-name">VOLT<span>SYN</span></div>
+  </div>
+  <div class="live-chip">
+    <span class="live-dot"></span>
+    <span>DERIV SYNTHETIC</span>
+  </div>
+</header>
+
+<!-- Heartbeat signature bar -->
+<div class="heartbeat-wrap">
+  <div class="heartbeat-track">
+    <canvas class="heartbeat-canvas" id="heartbeatCanvas"></canvas>
+  </div>
+</div>
+
+<!-- Index display — all 3 run simultaneously -->
+<div class="section-label">Scanning All Indices Simultaneously</div>
+<div class="index-row">
+  <div class="index-btn active" style="cursor:default;">
+    <span class="ib-name">V 75</span>
+    <span class="ib-vol">Volatility 75</span>
+  </div>
+  <div class="index-btn active" style="cursor:default;">
+    <span class="ib-name">V 50</span>
+    <span class="ib-vol">Volatility 50</span>
+  </div>
+  <div class="index-btn active" style="cursor:default;">
+    <span class="ib-name">V100</span>
+    <span class="ib-vol">Volatility 100</span>
+  </div>
+</div>
+
+<!-- Timeframe -->
+<div class="section-label">Timeframe</div>
+<div class="tf-row" id="tfRow">
+  <button class="tf-btn" data-tf="M15">M15</button>
+  <button class="tf-btn active" data-tf="M30">M30</button>
+  <button class="tf-btn" data-tf="H1">H1</button>
+</div>
+
+<!-- Risk inputs -->
+<div class="section-label">Account Settings</div>
+<div class="risk-row">
+  <div class="risk-input-wrap">
+    <div class="risk-input-label">Balance (USD)</div>
+    <input class="risk-input" type="number" id="balance" value="500" min="1">
+  </div>
+  <div class="risk-input-wrap">
+    <div class="risk-input-label">Risk per Trade %</div>
+    <input class="risk-input" type="number" id="riskPct" value="2" min="0.5" max="10" step="0.5">
+  </div>
+</div>
+
+<!-- Auto-analyze -->
+<div class="auto-bar" id="autoBar">
+  <div class="auto-toggle" id="autoToggle">
+    <div class="auto-switch" id="autoSwitch"></div>
+    <div>
+      <div class="auto-label">Auto-Analyze</div>
+      <div class="auto-sub" id="autoSubLabel">Scans V75, V50 & V100 every 5 minutes</div>
+    </div>
+  </div>
+  <div class="auto-next" id="autoNextWrap" style="display:none">
+    <div class="an-label">NEXT SCAN</div>
+    <div class="an-time mono" id="autoNextTime">10:00</div>
+  </div>
+  <div class="auto-ring" id="autoRing" style="display:none">
+    <svg width="36" height="36" viewBox="0 0 36 36">
+      <circle class="ar-bg" cx="18" cy="18" r="15"/>
+      <circle class="ar-fill" id="autoRingFill" cx="18" cy="18" r="15"
+        stroke-dasharray="94.2" stroke-dashoffset="0"/>
+    </svg>
+  </div>
+</div>
+
+<!-- Analyze -->
+<div class="analyze-wrap">
+  <button class="analyze-btn" id="analyzeBtn" onclick="runAnalysis()">⚡ SCAN ALL 3 INDICES</button>
+</div>
+
+<!-- Volatility profile -->
+<div class="vol-profile" id="volProfile">
+  <div class="vp-title">Index Volatility Profile</div>
+  <div class="vp-grid" id="volGrid">
+    <div class="vp-item"><div class="vp-label">Index</div><div class="vp-val mono" id="vpIndex">V 75</div></div>
+    <div class="vp-item"><div class="vp-label">Avg Daily Range</div><div class="vp-val mono" id="vpADR">—</div></div>
+    <div class="vp-item"><div class="vp-label">Tick Speed</div><div class="vp-val mono" id="vpTick">—</div></div>
+    <div class="vp-item"><div class="vp-label">RSI Period</div><div class="vp-val mono" id="vpRSI">—</div></div>
+    <div class="vp-item"><div class="vp-label">BB Width</div><div class="vp-val mono" id="vpBB">—</div></div>
+    <div class="vp-item"><div class="vp-label">ATR Multi</div><div class="vp-val mono" id="vpATR">—</div></div>
+  </div>
+</div>
+
+<!-- Countdown -->
+<div class="countdown" id="countdown">
+  <div style="font-size:1.2rem">⏱</div>
+  <div class="cd-meta">
+    <div class="cd-label" id="cdLabel">Signal sent to Telegram — enter trade in:</div>
+    <div class="cd-time mono" id="cdTime">01:00</div>
+    <div class="cd-track"><div class="cd-fill" id="cdFill" style="width:100%"></div></div>
+  </div>
+  <button class="cd-cancel" onclick="cancelCountdown()">✕</button>
+</div>
+
+<!-- Results area -->
+<div id="resultsArea">
+  <div class="empty-state">
+    <div class="es-icon">⚡</div>
+    <div class="es-title">Ready to Scan</div>
+    <div class="es-sub">Tap SCAN ALL 3 INDICES to analyze V75, V50 and V100 simultaneously with real Deriv data — best signal sent to Telegram</div>
+  </div>
+</div>
+
+<!-- Telegram -->
+<div class="section-label" style="margin-top:8px;">Telegram Alerts</div>
+<div class="tg-wrap">
+  <div class="tg-card">
+    <div class="tg-toggle-row" id="tgToggleRow">
+      <span class="tg-toggle-label">Send signal 1 min before entry</span>
+      <div class="tg-switch" id="tgSwitch"></div>
+    </div>
+    <div class="tg-fields" id="tgFields">
+      <input class="tg-input" type="password" id="tgToken" placeholder="Bot Token: 123456:ABC...">
+      <input class="tg-input" type="text" id="tgChatId" placeholder="Chat ID: -1001234567890">
+      <button class="tg-test-btn" onclick="sendTgTest()">✈ TEST CONNECTION</button>
+      <div class="tg-status" id="tgStatus"></div>
+    </div>
+  </div>
+</div>
+
+<div class="section-label" style="margin-top:8px;">Trade Log</div>
+<div class="log-wrap">
+  <div class="log-card">
+    <div class="log-header">
+      <div class="log-stats">
+        <div class="ls-item"><span class="ls-val mint" id="logWins">0</span><span class="ls-label">Wins</span></div>
+        <div class="ls-item"><span class="ls-val pink" id="logLoses">0</span><span class="ls-label">Losses</span></div>
+        <div class="ls-item"><span class="ls-val amber" id="logWR">—</span><span class="ls-label">Win Rate</span></div>
+      </div>
+      <button class="log-clear" onclick="clearLog()">Clear</button>
+    </div>
+    <div id="logList"><div class="log-empty">Signals will appear here. Tap W/L to mark result.</div></div>
+  </div>
+</div>
+
+<footer>⚠ Educational tool only — not financial advice. Always use a Deriv demo account first. Synthetic indices are high-risk instruments.</footer>
+
+<script>
+// ── INDEX PROFILES (tuned specifically for each synthetic index) ──
+const INDEX_PROFILES = {
+  V75: {
+    name:'Volatility 75', shortName:'V 75',
+    basePrice: 650.0,
+    candleVol: { M15: 12.5, M30: 18.0, H1: 28.0 },
+    adr: '~850 pts/day', tickSpeed: 'Fast',
+    rsiPeriod: 10, bbMult: 2.5, bbPeriod: 14,
+    atrMultSL: 1.6, stochPeriod: 10,
+    rsiOB: 78, rsiOS: 22,           // overbought/oversold thresholds
+    signalThreshold: 4.0,           // raised from 3.0
+    bbSqueezeThreshold: 0.005,      // block signal during squeeze
+    tickColor: '#FF9500'
+  },
+  V50: {
+    name:'Volatility 50', shortName:'V 50',
+    basePrice: 420.0,
+    candleVol: { M15: 6.5, M30: 9.5, H1: 15.0 },
+    adr: '~450 pts/day', tickSpeed: 'Medium',
+    rsiPeriod: 12, bbMult: 2.4, bbPeriod: 16,
+    atrMultSL: 2.0,                 // wider SL — V50 wicks are deceptive
+    stochPeriod: 11,
+    rsiOB: 80, rsiOS: 20,           // only extremes count on V50
+    signalThreshold: 4.5,           // STRICT — was 3.0, now 4.5
+    bbSqueezeThreshold: 0.004,
+    tickColor: '#7B2FFF'
+  },
+  V100: {
+    name:'Volatility 100', shortName:'V100',
+    basePrice: 1280.0,
+    candleVol: { M15: 22.0, M30: 32.0, H1: 52.0 },
+    adr: '~1500 pts/day', tickSpeed: 'Very Fast',
+    rsiPeriod: 8, bbMult: 3.0, bbPeriod: 12,
+    atrMultSL: 1.5, stochPeriod: 8,
+    rsiOB: 82, rsiOS: 18,
+    signalThreshold: 4.5,           // raised from 3.5
+    bbSqueezeThreshold: 0.006,
+    tickColor: '#FF2D78'
+  }
+};
+
+let selectedIndex = 'V75';
+let selectedTF    = 'M30';
+let tgEnabled     = false;
+let countdownInt  = null;
+let lastSignalData= null;
+let hbAnimFrame   = null;
+let hbPhase       = 0;
+
+// ── Heartbeat canvas animation ──
+function drawHeartbeat() {
+  const canvas = document.getElementById('heartbeatCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.offsetWidth, H = canvas.offsetHeight;
+  canvas.width = W; canvas.height = H;
+  ctx.clearRect(0,0,W,H);
+
+  const profile = INDEX_PROFILES[selectedIndex];
+  const speed = selectedIndex==='V100'?3.5:selectedIndex==='V75'?2.5:1.8;
+  const amp   = selectedIndex==='V100'?H*0.38:selectedIndex==='V75'?H*0.28:H*0.18;
+  const color = profile.tickColor;
+
+  // Draw grid lines
+  ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+  ctx.lineWidth = 1;
+  for(let x=0;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+
+  // Draw heartbeat line
+  ctx.beginPath();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.5;
+  ctx.shadowColor = color;
+  ctx.shadowBlur = 6;
+
+  const pts = 180;
+  for(let i=0;i<pts;i++){
+    const x = (i/pts)*W;
+    const t = (i/pts)*Math.PI*8 + hbPhase;
+    // Combine sine waves for organic feel
+    const y = H/2
+      - Math.sin(t)*amp*0.6
+      - Math.sin(t*2.3)*amp*0.25
+      - Math.sin(t*0.7)*amp*0.15
+      + (Math.random()-0.5)*amp*0.08;
+    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  }
+  ctx.stroke();
+
+  // Trailing glow dot at right edge
+  const finalT = Math.PI*8+hbPhase;
+  const finalY = H/2 - Math.sin(finalT)*amp*0.6 - Math.sin(finalT*2.3)*amp*0.25;
+  ctx.beginPath();
+  ctx.arc(W-4, Math.max(4,Math.min(H-4,finalY)), 3.5, 0, Math.PI*2);
+  ctx.fillStyle = color;
+  ctx.shadowBlur = 12;
+  ctx.fill();
+
+  hbPhase += speed * 0.04;
+  hbAnimFrame = requestAnimationFrame(drawHeartbeat);
+}
+
+// ── DERIV LIVE DATA — WebSocket API (no auth needed for market data) ──
+// Endpoint: wss://ws.binaryws.com/websockets/v3?app_id=1089
+// Symbol map: V75=R_75, V50=R_50, V100=R_100
+// Granularity: 60=M1, 300=M5, 900=M15, 1800=M30, 3600=H1
+const DERIV_WS_URL   = 'wss://ws.binaryws.com/websockets/v3?app_id=1089';
+const SYMBOL_MAP     = { V75:'R_75', V50:'R_50', V100:'R_100' };
+const GRANULARITY    = { M15:900, M30:1800, H1:3600 };
+let   derivWS        = null;   // shared WebSocket connection
+let   wsReady        = false;
+const wsCallbacks    = {};     // req_id → resolve/reject
+
+function getDerivWS() {
+  return new Promise((resolve, reject) => {
+    if(derivWS && wsReady) { resolve(derivWS); return; }
+    const ws = new WebSocket(DERIV_WS_URL);
+    ws.onopen  = () => { derivWS=ws; wsReady=true; resolve(ws); };
+    ws.onerror = (e) => reject(new Error('Deriv WebSocket connection failed'));
+    ws.onclose = ()  => { wsReady=false; derivWS=null; };
+    ws.onmessage = (msg) => {
+      try {
+        const data = JSON.parse(msg.data);
+        const id   = data.req_id;
+        if(id && wsCallbacks[id]) {
+          const { resolve, reject } = wsCallbacks[id];
+          delete wsCallbacks[id];
+          if(data.error) reject(new Error(data.error.message||'Deriv API error'));
+          else resolve(data);
+        }
+      } catch(e) {}
+    };
+  });
+}
+
+let wsReqId = 1;
+function wsSend(payload) {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const ws  = await getDerivWS();
+      const id  = wsReqId++;
+      payload.req_id = id;
+      wsCallbacks[id] = { resolve, reject };
+      ws.send(JSON.stringify(payload));
+      // Timeout after 10s
+      setTimeout(() => {
+        if(wsCallbacks[id]) {
+          delete wsCallbacks[id];
+          reject(new Error('Deriv API timeout — check connection'));
+        }
+      }, 10000);
+    } catch(e) { reject(e); }
+  });
+}
+
+// Fetch real OHLCV candles from Deriv for a given index + timeframe
+async function fetchDerivCandles(index, tf, count=120) {
+  const symbol      = SYMBOL_MAP[index];
+  const granularity = GRANULARITY[tf] || 1800;
+  if(!symbol) throw new Error(`Unknown index: ${index}`);
+
+  const resp = await wsSend({
+    ticks_history: symbol,
+    style:         'candles',
+    granularity,
+    count,
+    end:           'latest'
+  });
+
+  if(!resp.candles || resp.candles.length < 30)
+    throw new Error(`Not enough candles returned for ${index} (got ${resp.candles?.length||0})`);
+
+  // Deriv returns: { epoch, open, high, low, close }
+  return resp.candles.map(c => ({
+    o: parseFloat(c.open),
+    h: parseFloat(c.high),
+    l: parseFloat(c.low),
+    c: parseFloat(c.close),
+    t: c.epoch
+  }));
+}
+
+
+// ── Technical Indicators (parameters from index profile) ──
+function calcEMA(arr,p){const k=2/(p+1);let v=arr[0];const o=[v];for(let i=1;i<arr.length;i++){v=arr[i]*k+v*(1-k);o.push(v);}return o;}
+function calcRSI(closes,period){
+  let g=0,l=0,s=Math.max(1,closes.length-period-1);
+  for(let i=s;i<closes.length;i++){const d=closes[i]-closes[i-1];if(d>0)g+=d;else l-=d;}
+  const ag=g/period,al=l/period;return al===0?100:100-100/(1+ag/al);
+}
+function calcMACD(closes){
+  const e12=calcEMA(closes,12),e26=calcEMA(closes,26);
+  const ml=e12.map((v,i)=>v-e26[i]);const sig=calcEMA(ml,9);
+  return{line:ml[ml.length-1],hist:ml[ml.length-1]-sig[sig.length-1]};
+}
+function calcBB(closes,period,mult){
+  const sl=closes.slice(-period),mean=sl.reduce((a,b)=>a+b)/period;
+  const sd=Math.sqrt(sl.reduce((a,b)=>a+(b-mean)**2,0)/period);
+  return{upper:mean+mult*sd,lower:mean-mult*sd,middle:mean,sd,mean};
+}
+function calcStoch(candles,period){
+  const sl=candles.slice(-period);
+  const hi=Math.max(...sl.map(c=>c.h)),lo=Math.min(...sl.map(c=>c.l));
+  const cl=candles[candles.length-1].c;
+  return hi===lo?50:((cl-lo)/(hi-lo))*100;
+}
+function calcATR(candles,period=14){
+  let sum=0;const sl=candles.slice(-period-1);
+  for(let i=1;i<sl.length;i++)
+    sum+=Math.max(sl[i].h-sl[i].l,Math.abs(sl[i].h-sl[i-1].c),Math.abs(sl[i].l-sl[i-1].c));
+  return sum/period;
+}
+
+// ── Synthetic-aware Candlestick Patterns ──
+// Synthetics have specific patterns: spike reversals, channel breaks, volatility expansions
+function detectPatterns(candles, indexProfile) {
+  const pts=[],n=candles.length;if(n<4)return pts;
+  const c0=candles[n-1],c1=candles[n-2],c2=candles[n-3],c3=candles[n-4];
+  const b0=Math.abs(c0.c-c0.o),r0=c0.h-c0.l;
+  const b1=Math.abs(c1.c-c1.o),r1=c1.h-c1.l;
+  const b2=Math.abs(c2.c-c2.o);
+  const bull0=c0.c>c0.o,bear0=c0.c<c0.o;
+  const bull1=c1.c>c1.o,bear1=c1.c<c1.o;
+  const uw=c0.h-Math.max(c0.o,c0.c),lw=Math.min(c0.o,c0.c)-c0.l;
+  const avg=(b0+b1)/2;
+  const vol=indexProfile.candleVol[selectedTF]||indexProfile.candleVol['M30'];
+
+  // Spike Reversal (synthetic-specific — sudden large candle then opposite)
+  if(b1>vol*1.8&&b0>b1*0.6&&bull0!==bull1)
+    pts.push({name:'Spike Reversal',bias:bull0?'BUY':'SELL',weight:3,
+      desc:`Large ${bear1?'bearish':'bullish'} spike followed by strong reversal candle — common on synthetics`});
+
+  // Volatility Expansion Break (3+ candles in same direction then reversal)
+  const last4same=candles.slice(-4,-1).every(c=>(c.c>c.o)===bear0);
+  if(last4same&&b0>avg*1.3)
+    pts.push({name:'Trend Exhaustion',bias:bull0?'BUY':'SELL',weight:2,
+      desc:`3 consecutive ${bear0?'bullish':'bearish'} candles then ${bull0?'bull':'bear'} rejection — exhaustion reversal`});
+
+  // Classic patterns (still valid on synthetics)
+  if(lw>b0*2.5&&uw<b0*0.6&&r0>0)
+    pts.push({name:'Pin Bar',bias:'BUY',weight:2,desc:'Lower wick rejection — buyers absorbed selling pressure'});
+  if(uw>b0*2.5&&lw<b0*0.6&&r0>0)
+    pts.push({name:'Shooting Star',bias:'SELL',weight:2,desc:'Upper wick rejection — sellers absorbed buying pressure'});
+  if(bear1&&bull0&&c0.o<c1.c&&c0.c>c1.o&&b0>b1*1.05)
+    pts.push({name:'Bullish Engulfing',bias:'BUY',weight:3,desc:'Bull candle engulfs prior bear — momentum shift to buyers'});
+  if(bull1&&bear0&&c0.o>c1.c&&c0.c<c1.o&&b0>b1*1.05)
+    pts.push({name:'Bearish Engulfing',bias:'SELL',weight:3,desc:'Bear candle engulfs prior bull — momentum shift to sellers'});
+  if(b0<r0*0.12&&r0>0)
+    pts.push({name:'Doji',bias:'WAIT',weight:1,desc:'Indecision — synthetics often spike out of doji, wait for next candle'});
+  if(c2.c<c2.o&&b1<b2*0.4&&bull0&&c0.c>(c2.o+c2.c)/2)
+    pts.push({name:'Morning Star',bias:'BUY',weight:3,desc:'3-candle bottom — strong reversal formation'});
+  if(c2.c>c2.o&&b1<b2*0.4&&bear0&&c0.c<(c2.o+c2.c)/2)
+    pts.push({name:'Evening Star',bias:'SELL',weight:3,desc:'3-candle top — strong reversal formation'});
+
+  // Inside Bar (breakout on synthetics is fast)
+  if(c0.h<c1.h&&c0.l>c1.l)
+    pts.push({name:'Inside Bar',bias:bull1?'BUY':'SELL',weight:1,
+      desc:'Consolidation — synthetics break inside bars aggressively'});
+
+  return pts;
+}
+// ── Market Regime Detector ──
+function detectRegime(closes, candles, atrVal, profile) {
+  const n = closes.length;
+  const ema20 = calcEMA(closes, 20), ema50 = calcEMA(closes, 50);
+  const slopeWindow = 5;
+  const e20Slope = (ema20[ema20.length-1] - ema20[ema20.length-1-slopeWindow]) / (atrVal * slopeWindow);
+  const slopeStrength = Math.abs(e20Slope);
+
+  const window = 20;
+  const priceChange = Math.abs(closes[n-1] - closes[n-1-window]);
+  let totalPath = 0;
+  for(let i=n-window; i<n; i++) totalPath += Math.abs(closes[i]-closes[i-1]);
+  const efficiency = totalPath > 0 ? priceChange / totalPath : 0;
+
+  const recentATRs = [];
+  for(let i=10; i<30; i++){
+    const sl=candles.slice(n-i-14,n-i); let s=0;
+    for(let j=1;j<sl.length;j++) s+=Math.max(sl[j].h-sl[j].l,Math.abs(sl[j].h-sl[j-1].c),Math.abs(sl[j].l-sl[j-1].c));
+    recentATRs.push(s/14);
+  }
+  const avgATR = recentATRs.reduce((a,b)=>a+b,0)/recentATRs.length||atrVal;
+  const volRatio = atrVal/(avgATR);
+
+  const bodies = candles.slice(-10).map(c=>Math.abs(c.c-c.o));
+  const avgBody = bodies.reduce((a,b)=>a+b,0)/bodies.length||1;
+  const bodyCV = Math.sqrt(bodies.reduce((s,b)=>s+(b-avgBody)**2,0)/bodies.length)/avgBody;
+
+  let regime, regimeDesc;
+  if(efficiency < 0.12 && bodyCV > 1.6) {
+    regime='CHOPPY';
+    regimeDesc='Highly erratic — no directional efficiency, inconsistent candle bodies';
+  } else if(slopeStrength > 0.18 && efficiency > 0.40) {
+    regime='STRONG_TREND';
+    regimeDesc=`Strong directional trend — slope ${(e20Slope*100).toFixed(1)}%/bar, efficiency ${(efficiency*100).toFixed(0)}%`;
+  } else if(slopeStrength > 0.07 && efficiency > 0.25) {
+    regime='WEAK_TREND';
+    regimeDesc=`Mild trend forming — momentum building, requires confirmation`;
+  } else {
+    regime='RANGING';
+    regimeDesc=`Price ranging — flat EMAs, low directional efficiency, mean-reversion favoured`;
+  }
+  return { regime, regimeDesc, slopeStrength, efficiency, volRatio, bodyCV, e20Slope: e20Slope.toFixed(3) };
+}
+
+// ── Adaptive Weights per Regime ──
+function getWeights(regime) {
+  switch(regime) {
+    case 'STRONG_TREND': return { ema:3.5, macd:2.0, rsi:0.3, stoch:0.2, bb:0.3, pattern:1.5, h1:2.0, label:'Trend-following mode: EMA & MACD heavy' };
+    case 'WEAK_TREND':   return { ema:2.0, macd:1.5, rsi:0.8, stoch:0.6, bb:0.8, pattern:1.5, h1:1.5, label:'Balanced mode: multiple confirmations required' };
+    case 'RANGING':      return { ema:0.0, macd:0.0, rsi:3.0, stoch:2.5, bb:3.0, pattern:2.5, h1:0.0, label:'Reversal mode: RSI + BB + Pattern ONLY — EMA/MACD/H1 ignored' };
+    case 'CHOPPY':       return { ema:0,   macd:0,   rsi:0,   stoch:0,   bb:0,   pattern:0,   h1:0,   label:'CHOPPY — all weights zeroed, no trade' };
+    default:             return { ema:1,   macd:1,   rsi:1,   stoch:1,   bb:1,   pattern:1,   h1:1,   label:'Default balanced' };
+  }
+}
+
+async function runAnalysisEngine(index, tf, balance, riskPct) {
+  const profile  = INDEX_PROFILES[index];
+
+  // ── FETCH REAL LIVE DATA FROM DERIV WEBSOCKET ──
+  const [candles, h1Candles] = await Promise.all([
+    fetchDerivCandles(index, tf,   160),
+    fetchDerivCandles(index, 'H1', 80)
+  ]);
+
+  const closes   = candles.map(c=>c.c);
+  const spot     = closes[closes.length-1];
+  const h1Closes  = h1Candles.map(c=>c.c);
+  const h1Ema20   = calcEMA(h1Closes,20), h1Ema50=calcEMA(h1Closes,50);
+  const h1e20     = h1Ema20[h1Ema20.length-1];
+  const h1Spot    = h1Closes[h1Closes.length-1];
+  const h1Bias    = h1Spot > h1e20 ? 'BULL' : 'BEAR';
+
+  const ema20arr  = calcEMA(closes,20), ema50arr=calcEMA(closes,50);
+  const ema20     = ema20arr[ema20arr.length-1], ema50=ema50arr[ema50arr.length-1];
+  const rsiVal    = calcRSI(closes, profile.rsiPeriod);
+  const macd      = calcMACD(closes);
+  const bb        = calcBB(closes, profile.bbPeriod, profile.bbMult);
+  const stochV    = calcStoch(candles, profile.stochPeriod);
+  const atrVal    = calcATR(candles, 10);
+  const patterns  = detectPatterns(candles, profile);
+  const bbSqueeze = bb.sd/bb.mean < profile.bbSqueezeThreshold;
+
+  // ── STEP 1: Detect market regime ──
+  const regimeData = detectRegime(closes, candles, atrVal, profile);
+  const { regime } = regimeData;
+
+  // ── STEP 2: Get adaptive weights for this regime ──
+  const W = getWeights(regime);
+
+  let score=0; const reasons=[], blockers=[];
+
+  // ── STEP 3: Score each indicator with its adaptive weight ──
+  // RANGING uses a completely separate reversal scoring path
+  // TREND uses the standard confluence path
+
+  if(regime === 'RANGING') {
+    // ── REVERSAL SCORING PATH ──
+    // In a range, EMA/MACD/H1 are lagging and misleading — ignore them completely.
+    // Only these matter: BB position, RSI extreme, Stoch extreme, reversal patterns.
+
+    // 1. Bollinger Band boundary — primary trigger
+    if(spot <= bb.lower) {
+      const depth = (bb.lower - spot) / (bb.lower - bb.mean); // how far past the band
+      const bbScore = Math.min(4.5, 1.5 + depth * 3.0) * W.bb;
+      score += bbScore;
+      reasons.push(`[BB REVERSAL ×${W.bb}] Price at/below lower band — BUY reversal zone (${spot.toFixed(2)} ≤ ${bb.lower.toFixed(2)})`);
+    } else if(spot >= bb.upper) {
+      const depth = (spot - bb.upper) / (bb.mean - bb.upper) * -1;
+      const bbScore = Math.min(4.5, 1.5 + Math.abs(depth) * 3.0) * W.bb;
+      score -= bbScore;
+      reasons.push(`[BB REVERSAL ×${W.bb}] Price at/above upper band — SELL reversal zone (${spot.toFixed(2)} ≥ ${bb.upper.toFixed(2)})`);
+    } else {
+      // Price in middle of range — no strong BB signal
+      const distToLower = (spot - bb.lower) / (bb.upper - bb.lower);
+      if(distToLower < 0.25)       { score += 0.8*W.bb; reasons.push(`[BB ×${W.bb}] Near lower band — mild BUY bias`); }
+      else if(distToLower > 0.75)  { score -= 0.8*W.bb; reasons.push(`[BB ×${W.bb}] Near upper band — mild SELL bias`); }
+      else reasons.push(`[BB] Price in mid-range — no reversal edge, wait for boundary`);
+    }
+
+    // 2. RSI extreme — must confirm direction
+    let rsiSig='NEUTRAL';
+    if(rsiVal < profile.rsiOS) {
+      rsiSig='OVERSOLD';
+      const strength = Math.min(3.0, (profile.rsiOS - rsiVal) / 10 * 3.0);
+      score += (2.0 + strength) * W.rsi;
+      reasons.push(`[RSI REVERSAL ×${W.rsi}] Deeply oversold at ${rsiVal.toFixed(1)} (<${profile.rsiOS}) — high-probability BUY bounce`);
+    } else if(rsiVal > profile.rsiOB) {
+      rsiSig='OVERBOUGHT';
+      const strength = Math.min(3.0, (rsiVal - profile.rsiOB) / 10 * 3.0);
+      score -= (2.0 + strength) * W.rsi;
+      reasons.push(`[RSI REVERSAL ×${W.rsi}] Deeply overbought at ${rsiVal.toFixed(1)} (>${profile.rsiOB}) — high-probability SELL reversal`);
+    } else if(rsiVal < 40) {
+      score += 0.6*W.rsi;
+      reasons.push(`[RSI ×${W.rsi}] Below 40 (${rsiVal.toFixed(1)}) — mild BUY bias in range`);
+    } else if(rsiVal > 60) {
+      score -= 0.6*W.rsi;
+      reasons.push(`[RSI ×${W.rsi}] Above 60 (${rsiVal.toFixed(1)}) — mild SELL bias in range`);
+    }
+
+    // 3. Stochastic extreme — secondary confirmation
+    let stochSig='NEUTRAL';
+    if(stochV < 15)  { stochSig='OVERSOLD';   score += 1.5*W.stoch; reasons.push(`[STOCH REVERSAL ×${W.stoch}] Oversold at ${stochV.toFixed(1)} — confirms BUY reversal`); }
+    else if(stochV > 85) { stochSig='OVERBOUGHT'; score -= 1.5*W.stoch; reasons.push(`[STOCH REVERSAL ×${W.stoch}] Overbought at ${stochV.toFixed(1)} — confirms SELL reversal`); }
+    else if(stochV < 30) { score += 0.5*W.stoch; }
+    else if(stochV > 70) { score -= 0.5*W.stoch; }
+
+    // 4. Reversal candlestick patterns — high weight in ranging
+    let pBias=0;
+    patterns.forEach(p=>{ pBias += p.bias==='BUY'?p.weight : p.bias==='SELL'?-p.weight : 0; });
+    if(pBias >= 3)       { score += 3.0*W.pattern; reasons.push(`[PATTERN REVERSAL ×${W.pattern}] Strong reversal pattern: ${patterns.filter(p=>p.bias==='BUY').map(p=>p.name).join(' + ')} — high-confidence entry`); }
+    else if(pBias >= 2)  { score += 2.0*W.pattern; reasons.push(`[PATTERN ×${W.pattern}] Bullish reversal: ${patterns.filter(p=>p.bias==='BUY').map(p=>p.name).join(' + ')}`); }
+    else if(pBias <= -3) { score -= 3.0*W.pattern; reasons.push(`[PATTERN REVERSAL ×${W.pattern}] Strong reversal pattern: ${patterns.filter(p=>p.bias==='SELL').map(p=>p.name).join(' + ')} — high-confidence entry`); }
+    else if(pBias <= -2) { score -= 2.0*W.pattern; reasons.push(`[PATTERN ×${W.pattern}] Bearish reversal: ${patterns.filter(p=>p.bias==='SELL').map(p=>p.name).join(' + ')}`); }
+    else if(pBias > 0)   { score += 0.8*W.pattern; }
+    else if(pBias < 0)   { score -= 0.8*W.pattern; }
+
+    // 5. MACD histogram direction — only as a momentum shift signal (small weight)
+    // In ranging, we want MACD hist to be TURNING, not already positive
+    if(macd.hist > 0 && score > 0)  { score += 0.5; reasons.push(`[MACD] Histogram just turned positive — early momentum shift confirms BUY`); }
+    if(macd.hist < 0 && score < 0)  { score -= 0.5; reasons.push(`[MACD] Histogram just turned negative — early momentum shift confirms SELL`); }
+
+    // Mark signal type for display
+    reasons.unshift(`↔ RANGING REGIME: Reversal scoring active — looking for boundary bounces`);
+
+  } else {
+    // ── TREND SCORING PATH (STRONG_TREND / WEAK_TREND) ──
+
+    // H1 trend (weighted — important in trends)
+    if(h1Bias==='BULL') { score += 1.5*W.h1; reasons.push(`[H1 ×${W.h1}] H1 BULLISH — higher timeframe favours BUY`); }
+    else                { score -= 1.5*W.h1; reasons.push(`[H1 ×${W.h1}] H1 BEARISH — higher timeframe favours SELL`); }
+
+    // EMA structure
+    if(spot>ema20&&ema20>ema50)
+      { score+=2.5*W.ema; reasons.push(`[EMA ×${W.ema}] Price above EMA20 & EMA50 — uptrend confirmed (${spot.toFixed(2)} > ${ema20.toFixed(2)} > ${ema50.toFixed(2)})`); }
+    else if(spot<ema20&&ema20<ema50)
+      { score-=2.5*W.ema; reasons.push(`[EMA ×${W.ema}] Price below EMA20 & EMA50 — downtrend confirmed`); }
+    else if(spot>ema20)
+      { score+=0.5*W.ema; reasons.push(`[EMA ×${W.ema}] Above EMA20 only — partial bullish`); }
+    else
+      { score-=0.5*W.ema; reasons.push(`[EMA ×${W.ema}] Below EMA20 only — partial bearish`); }
+
+    // MACD
+    if(macd.line>0&&macd.hist>0)
+      { score+=1.5*W.macd; reasons.push(`[MACD ×${W.macd}] Above zero + rising histogram — bullish momentum`); }
+    else if(macd.line<0&&macd.hist<0)
+      { score-=1.5*W.macd; reasons.push(`[MACD ×${W.macd}] Below zero + falling histogram — bearish momentum`); }
+    else if(macd.hist>0)
+      { score+=0.5*W.macd; reasons.push(`[MACD ×${W.macd}] Histogram turning positive — early bullish shift`); }
+    else
+      { score-=0.5*W.macd; reasons.push(`[MACD ×${W.macd}] Histogram turning negative — early bearish shift`); }
+
+    // RSI (lower weight in trends — avoid killing trend signals)
+    let rsiSig='NEUTRAL';
+    if(rsiVal>profile.rsiOB)
+      { rsiSig='OVERBOUGHT'; score-=1.5*W.rsi; reasons.push(`[RSI ×${W.rsi}] Overbought ${rsiVal.toFixed(1)} — caution on BUY`); }
+    else if(rsiVal<profile.rsiOS)
+      { rsiSig='OVERSOLD';   score+=1.5*W.rsi; reasons.push(`[RSI ×${W.rsi}] Oversold ${rsiVal.toFixed(1)} — caution on SELL`); }
+    else if(rsiVal>60) { score+=0.5*W.rsi; }
+    else if(rsiVal<40) { score-=0.5*W.rsi; }
+
+    // Stoch
+    let stochSig='NEUTRAL';
+    if(stochV>85)      { stochSig='OVERBOUGHT'; score-=0.8*W.stoch; }
+    else if(stochV<15) { stochSig='OVERSOLD';   score+=0.8*W.stoch; }
+
+    // Bollinger Bands
+    const bbSig_ = spot>bb.upper?'UPPER':spot<bb.lower?'LOWER':'MIDDLE';
+    if(spot<bb.lower)      { score+=1.5*W.bb; reasons.push(`[BB ×${W.bb}] Price below lower band`); }
+    else if(spot>bb.upper) { score-=1.5*W.bb; reasons.push(`[BB ×${W.bb}] Price above upper band`); }
+
+    // Candlestick patterns
+    let pBias=0;
+    patterns.forEach(p=>{ pBias+=p.bias==='BUY'?p.weight:p.bias==='SELL'?-p.weight:0; });
+    if(pBias>=2)       { score+=2*W.pattern; reasons.push(`[PATTERN ×${W.pattern}] Strong bullish: ${patterns.filter(p=>p.bias==='BUY').map(p=>p.name).join(' + ')}`); }
+    else if(pBias<=-2) { score-=2*W.pattern; reasons.push(`[PATTERN ×${W.pattern}] Strong bearish: ${patterns.filter(p=>p.bias==='SELL').map(p=>p.name).join(' + ')}`); }
+    else if(pBias>0)   { score+=0.5*W.pattern; reasons.push(`[PATTERN ×${W.pattern}] Mild bullish candle`); }
+    else if(pBias<0)   { score-=0.5*W.pattern; reasons.push(`[PATTERN ×${W.pattern}] Mild bearish candle`); }
+  }
+
+  // Shared variables needed after scoring
+  const rsiSig   = rsiVal>profile.rsiOB?'OVERBOUGHT':rsiVal<profile.rsiOS?'OVERSOLD':'NEUTRAL';
+  const stochSig = stochV>85?'OVERBOUGHT':stochV<15?'OVERSOLD':'NEUTRAL';
+  const bbSig    = spot>bb.upper?'UPPER':spot<bb.lower?'LOWER':'MIDDLE';
+
+  // ── STEP 4: Hard blocks ──
+  // Block 1: Choppy — no trade
+  if(regime==='CHOPPY') {
+    blockers.push(`⛔ CHOPPY BLOCKED: Erratic price action — efficiency ${(regimeData.efficiency*100).toFixed(0)}%. Wait for regime to resolve.`);
+  }
+
+  // Block 2: BB squeeze
+  if(bbSqueeze) {
+    blockers.push(`⛔ BB SQUEEZE BLOCKED: Volatility contracting — explosive move imminent but direction unknown`);
+  }
+
+  // Block 3: M15/H1 alignment — ONLY apply in trend regimes
+  // In RANGING, reversals GO AGAINST the prevailing trend by definition — never block them for alignment
+  const m15Lean = (ema20>ema50?1:-1)+(macd.hist>0?1:-1)+(spot>ema20?1:-1);
+  const m15Dir  = m15Lean>0?'BULL':'BEAR';
+  const aligned = regime==='RANGING' ? true : m15Dir===h1Bias;
+  if(!aligned) {
+    blockers.push(`⛔ TIMEFRAME CONFLICT: M15 leans ${m15Dir} but H1 is ${h1Bias} — no trade until aligned`);
+  }
+
+  // ── STEP 5: Threshold adjustment by regime ──
+  let thresh = profile.signalThreshold;
+  if(regime==='RANGING')     thresh = thresh * 0.65; // much easier — BB+RSI+Pattern alone is enough
+  if(regime==='WEAK_TREND')  thresh = thresh * 1.15;
+  if(regime==='STRONG_TREND')thresh = thresh * 0.90;
+  thresh = +thresh.toFixed(2);
+
+  const tradeType = regime==='RANGING' ? 'REVERSAL' : 'TREND';
+
+  // ── STEP 6: Signal decision ──
+  let signal='WAIT', confidence='LOW', winProb=50;
+  const hardBlocked = regime==='CHOPPY' || bbSqueeze || !aligned;
+
+  if(!hardBlocked) {
+    if     (score>=thresh+2.5) { signal='BUY';  confidence='HIGH';   winProb=Math.min(90,74+score*1.8); }
+    else if(score>=thresh)     { signal='BUY';  confidence='MEDIUM'; winProb=Math.min(76,63+score*1.8); }
+    else if(score<=-(thresh+2.5)){ signal='SELL'; confidence='HIGH'; winProb=Math.min(90,74+Math.abs(score)*1.8); }
+    else if(score<=-thresh)    { signal='SELL'; confidence='MEDIUM'; winProb=Math.min(76,63+Math.abs(score)*1.8); }
+    else { signal='WAIT'; confidence='LOW'; winProb=44+Math.abs(score)*2.5; }
+  }
+
+  // ── Risk management ──
+  const slPts  = Math.max(atrVal*profile.atrMultSL, profile.candleVol[tf]*2.0);
+  const tp1Pts = slPts*2.0, tp2Pts=slPts*3.5;
+  let entry=spot, sl, tp1, tp2;
+  if(signal==='SELL'){ sl=entry+slPts; tp1=entry-tp1Pts; tp2=entry-tp2Pts; }
+  else               { sl=entry-slPts; tp1=entry+tp1Pts; tp2=entry+tp2Pts; }
+  const dollarRisk = +(balance*riskPct/100).toFixed(2);
+  const lots = Math.max(0.01,+(dollarRisk/(slPts*0.01*100)).toFixed(2));
+
+  const recentHi=[...candles].slice(-30).map(c=>c.h).sort((a,b)=>b-a);
+  const recentLo=[...candles].slice(-30).map(c=>c.l).sort((a,b)=>a-b);
+
+  const warnings=[...blockers];
+  if(rsiVal>70&&signal==='BUY')          warnings.push(`RSI elevated on BUY — use 50% stake only`);
+  if(rsiVal<30&&signal==='SELL')         warnings.push(`RSI depressed on SELL — use 50% stake only`);
+  if(patterns.some(p=>p.name==='Doji'))  warnings.push(`Doji detected — wait for next candle before entering`);
+  if(signal==='WAIT'&&!hardBlocked)      warnings.push(`Score ${score.toFixed(2)} vs ±${thresh} threshold — no edge. Stay flat.`);
+  if(index==='V100')                     warnings.push(`V100: extreme volatility — minimum stake always`);
+
+  return {
+    signal, confidence, winProb:Math.round(winProb), score:+score.toFixed(2),
+    regime, regimeData, weights:W, thresh,
+    tradeType,
+    h1Bias, m15Dir, aligned,
+    entry:entry.toFixed(2), sl:sl.toFixed(2), tp1:tp1.toFixed(2), tp2:tp2.toFixed(2),
+    slPts:slPts.toFixed(1), dollarRisk, lots,
+    rr:`1:${(tp1Pts/slPts).toFixed(1)}`,
+    rsiVal:rsiVal.toFixed(1), rsiSig, rsiPeriod:profile.rsiPeriod,
+    rsiOB:profile.rsiOB, rsiOS:profile.rsiOS,
+    macd, stochV:stochV.toFixed(1), stochSig,
+    bbSig, bbSqueeze, bbMult:profile.bbMult,
+    ema20:ema20.toFixed(2), ema50:ema50.toFixed(2),
+    atrVal:atrVal.toFixed(2),
+    patterns, reasons, warnings,
+    spot:spot.toFixed(2),
+    key_levels:{
+      resistance_2:(recentHi[0]||entry+atrVal*3).toFixed(2),
+      resistance_1:(recentHi[3]||entry+atrVal*1.5).toFixed(2),
+      support_1:   (recentLo[3]||entry-atrVal*1.5).toFixed(2),
+      support_2:   (recentLo[0]||entry-atrVal*3).toFixed(2)
+    }
+  };
+}
+
+
+// ── Render results ──
+function renderResults(d, index, tf) {
+  const profile = INDEX_PROFILES[index];
+  const dir = d.signal==='BUY'?'buy':d.signal==='SELL'?'sell':'wait';
+  const dirLabel = d.signal==='BUY'?'▲ BUY':d.signal==='SELL'?'▼ SELL':'◆ WAIT';
+
+  let html = '';
+
+  // Signal card
+  html += `
+  <div class="signal-card ${dir}">
+    <div class="sc-top">
+      <div class="sc-dir ${dir}">${dirLabel}</div>
+      <div class="win-prob">
+        <div class="wp-label">WIN PROB</div>
+        <div class="wp-val ${dir}">${d.winProb}%</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;">
+      <span style="font-size:0.6rem;padding:3px 8px;border-radius:10px;font-weight:700;background:${d.tradeType==='REVERSAL'?'rgba(245,166,35,0.2)':'rgba(0,200,83,0.15)'};color:${d.tradeType==='REVERSAL'?'var(--amber)':'var(--win)'};border:1px solid ${d.tradeType==='REVERSAL'?'var(--amber)':'var(--win)'};">${d.tradeType==='REVERSAL'?'↩ REVERSAL':'→ TREND'}</span>
+      <span style="font-size:0.6rem;padding:3px 8px;border-radius:10px;font-weight:600;background:${d.h1Bias==='BULL'?'rgba(0,255,178,0.15)':'rgba(255,45,120,0.15)'};color:${d.h1Bias==='BULL'?'var(--mint)':'var(--pink)'};border:1px solid ${d.h1Bias==='BULL'?'var(--mint)':'var(--pink)'}">H1 ${d.h1Bias==='BULL'?'▲ BULL':'▼ BEAR'}</span>
+      <span style="font-size:0.6rem;padding:3px 8px;border-radius:10px;font-weight:600;background:${d.aligned?'rgba(0,255,178,0.15)':'rgba(245,166,35,0.15)'};color:${d.aligned?'var(--mint)':'var(--amber)'};border:1px solid ${d.aligned?'var(--mint)':'var(--amber)'}">${d.tradeType==='REVERSAL'?'↔ RANGE BYPASS':'✓ TF ALIGNED'}</span>
+      <span style="font-size:0.6rem;padding:3px 8px;border-radius:10px;font-weight:600;background:var(--violet-dim);color:var(--violet2);border:1px solid var(--violet)">Score ${d.score>0?'+':''}${d.score.toFixed(1)}</span>
+      <span style="font-size:0.6rem;padding:3px 8px;border-radius:10px;font-weight:600;background:${d.bbSqueeze?'var(--amber-dim)':'var(--bg3)'};color:${d.bbSqueeze?'var(--amber)':'var(--muted)'};">${d.bbSqueeze?'⚡ SQUEEZE':'BB OK'}</span>
+    </div>
+    <div class="sc-reason">${d.reasons[0]||'Multi-indicator confluence'}</div>
+    <div class="sc-levels">
+      <div class="sc-level">
+        <div class="sl-label">ENTRY</div>
+        <div class="sl-val entry">${d.entry}</div>
+      </div>
+      <div class="sc-level">
+        <div class="sl-label">STOP LOSS</div>
+        <div class="sl-val sl">${d.sl}</div>
+      </div>
+      <div class="sc-level">
+        <div class="sl-label">TARGET 1</div>
+        <div class="sl-val tp">${d.tp1}</div>
+      </div>
+    </div>
+  </div>`;
+
+  // Win probability bar
+  html += `
+  <div class="prob-bar-wrap">
+    <div class="pb-header"><span>Win probability</span><span>${d.winProb}% · Score ${d.score>0?'+':''}${d.score.toFixed(1)}</span></div>
+    <div class="pb-track"><div class="pb-fill ${dir}" style="width:${d.winProb}%"></div></div>
+  </div>`;
+
+  // Regime card (inserted before indicators panel)
+  const regimeColor = d.regime==='STRONG_TREND'?'var(--mint)':d.regime==='RANGING'?'var(--violet2)':d.regime==='WEAK_TREND'?'var(--amber)':'var(--pink)';
+  const regimeIcon  = d.regime==='STRONG_TREND'?'📈':d.regime==='RANGING'?'↔️':d.regime==='WEAK_TREND'?'📊':'⚠️';
+  html += `
+  <div class="panels">
+    <div class="panel" style="border-color:${regimeColor};border-width:1.5px;">
+      <div class="panel-title" style="color:${regimeColor};">Market Regime · ${regimeIcon} ${d.regime.replace('_',' ')}</div>
+      <div style="font-size:0.72rem;color:var(--text);opacity:0.85;margin-bottom:12px;line-height:1.5;">${d.regimeData.regimeDesc}</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px;">
+        <div style="background:var(--bg3);border-radius:6px;padding:7px;">
+          <div style="font-size:0.58rem;color:var(--muted);">Efficiency</div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:0.78rem;font-weight:600;color:${regimeColor};">${(d.regimeData.efficiency*100).toFixed(0)}%</div>
+        </div>
+        <div style="background:var(--bg3);border-radius:6px;padding:7px;">
+          <div style="font-size:0.58rem;color:var(--muted);">Vol Ratio</div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:0.78rem;font-weight:600;color:${d.regimeData.volRatio>1.2?'var(--pink)':d.regimeData.volRatio<0.8?'var(--amber)':'var(--muted)'};">${d.regimeData.volRatio.toFixed(2)}×</div>
+        </div>
+        <div style="background:var(--bg3);border-radius:6px;padding:7px;">
+          <div style="font-size:0.58rem;color:var(--muted);">Threshold</div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:0.78rem;font-weight:600;color:var(--violet2);">±${d.thresh}</div>
+        </div>
+      </div>
+      <div style="font-size:0.62rem;color:${regimeColor};font-weight:600;padding:5px 8px;background:rgba(0,0,0,0.2);border-radius:5px;">⚡ ${d.weights.label}</div>
+      <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:4px;">
+        ${['EMA','MACD','RSI','Stoch','BB','Pattern'].map((name,i)=>{
+          const wvals=[d.weights.ema,d.weights.macd,d.weights.rsi,d.weights.stoch,d.weights.bb,d.weights.pattern];
+          const w=wvals[i];
+          const bg=w>=2?'rgba(0,255,178,0.15)':w>=1?'rgba(123,47,255,0.15)':w>0?'rgba(255,149,0,0.15)':'rgba(255,45,120,0.1)';
+          const col=w>=2?'var(--mint)':w>=1?'var(--violet2)':w>0?'var(--amber)':'var(--muted)';
+          return `<span style="font-size:0.58rem;padding:2px 7px;border-radius:8px;background:${bg};color:${col};border:1px solid ${col};">${name} ×${w}</span>`;
+        }).join('')}
+      </div>
+    </div>`;
+
+  const iClass=sig=>{if(!sig)return 'dim';const s=sig.toUpperCase();if(['ABOVE','BULLISH','OVERSOLD'].some(x=>s.includes(x)))return'bull';if(['BELOW','BEARISH','OVERBOUGHT'].some(x=>s.includes(x)))return'bear';return'neut';};
+  html += `
+    <div class="panel">
+      <div class="panel-title">Volatility-Tuned Indicators</div>
+      <div class="ind-row">
+        <div class="ir-left"><span class="ir-name">RSI(${d.rsiPeriod}) <span style="color:var(--violet);font-size:0.58rem">TUNED</span></span><span class="ir-desc">Shorter period for ${index} speed</span></div>
+        <div class="ir-right"><div class="ir-val ${iClass(d.rsiSig)}">${d.rsiVal}</div><div class="ir-sig ${iClass(d.rsiSig)}">${d.rsiSig}</div></div>
+      </div>
+      <div class="ind-row">
+        <div class="ir-left"><span class="ir-name">MACD</span><span class="ir-desc">Histogram ${d.macd.hist>0?'rising':'falling'}</span></div>
+        <div class="ir-right"><div class="ir-val ${d.macd.hist>0?'bull':'bear'}">${d.macd.line.toFixed(3)}</div><div class="ir-sig ${d.macd.hist>0?'bull':'bear'}">${d.macd.hist>0?'BULLISH':'BEARISH'}</div></div>
+      </div>
+      <div class="ind-row">
+        <div class="ir-left"><span class="ir-name">EMA 20</span><span class="ir-desc">Short-term trend</span></div>
+        <div class="ir-right"><div class="ir-val ${parseFloat(d.spot)>parseFloat(d.ema20)?'bull':'bear'}">${d.ema20}</div><div class="ir-sig ${parseFloat(d.spot)>parseFloat(d.ema20)?'bull':'bear'}">${parseFloat(d.spot)>parseFloat(d.ema20)?'ABOVE':'BELOW'}</div></div>
+      </div>
+      <div class="ind-row">
+        <div class="ir-left"><span class="ir-name">EMA 50</span><span class="ir-desc">Long-term trend</span></div>
+        <div class="ir-right"><div class="ir-val ${parseFloat(d.ema20)>parseFloat(d.ema50)?'bull':'bear'}">${d.ema50}</div><div class="ir-sig ${parseFloat(d.ema20)>parseFloat(d.ema50)?'bull':'bear'}">${parseFloat(d.ema20)>parseFloat(d.ema50)?'CROSS UP':'CROSS DN'}</div></div>
+      </div>
+      <div class="ind-row">
+        <div class="ir-left"><span class="ir-name">BB(${profile.bbPeriod}, ${profile.bbMult}σ) <span style="color:var(--violet);font-size:0.58rem">TUNED</span></span><span class="ir-desc">Wider bands for ${index} vol</span></div>
+        <div class="ir-right"><div class="ir-val ${d.bbSig==='LOWER'?'bull':d.bbSig==='UPPER'?'bear':'neut'}">${d.bbSig}${d.bbSqueeze?' ⚡':''}</div><div class="ir-sig ${d.bbSig==='LOWER'?'bull':d.bbSig==='UPPER'?'bear':'neut'}">${d.bbSqueeze?'SQUEEZE':'BAND'}</div></div>
+      </div>
+      <div class="ind-row">
+        <div class="ir-left"><span class="ir-name">STOCH(${profile.stochPeriod}) <span style="color:var(--violet);font-size:0.58rem">TUNED</span></span><span class="ir-desc">Index-adjusted period</span></div>
+        <div class="ir-right"><div class="ir-val ${iClass(d.stochSig)}">${d.stochV}</div><div class="ir-sig ${iClass(d.stochSig)}">${d.stochSig}</div></div>
+      </div>
+      <div class="ind-row">
+        <div class="ir-left"><span class="ir-name">ATR(10)</span><span class="ir-desc">True volatility range</span></div>
+        <div class="ir-right"><div class="ir-val dim">${d.atrVal} pts</div><div class="ir-sig neut">SL: ${d.slPts}pt</div></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Candlestick Patterns</div>
+      ${d.patterns.length===0
+        ?'<div class="no-pattern">No strong patterns on latest candle</div>'
+        :d.patterns.map(p=>`
+          <div class="pattern-item ${p.bias.toLowerCase()}">
+            <div class="pi-name ${p.bias.toLowerCase()}">🕯 ${p.name} <span style="font-size:0.62rem;opacity:0.7">(weight ${p.weight})</span></div>
+            <div class="pi-desc">${p.desc}</div>
+          </div>`).join('')}
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Position & Risk</div>
+      <div class="risk-grid">
+        <div class="rg-item"><div class="rg-label">Entry</div><div class="rg-val violet">${d.entry}</div></div>
+        <div class="rg-item"><div class="rg-label">Stop Loss</div><div class="rg-val pink">${d.sl}</div></div>
+        <div class="rg-item"><div class="rg-label">Target 1</div><div class="rg-val mint">${d.tp1}</div></div>
+        <div class="rg-item"><div class="rg-label">Target 2</div><div class="rg-val mint">${d.tp2}</div></div>
+        <div class="rg-item"><div class="rg-label">Risk:Reward</div><div class="rg-val amber">${d.rr}</div></div>
+        <div class="rg-item"><div class="rg-label">$ At Risk</div><div class="rg-val pink">$${d.dollarRisk}</div></div>
+        <div class="rg-item"><div class="rg-label">Lot Size</div><div class="rg-val amber">${d.lots}</div></div>
+        <div class="rg-item"><div class="rg-label">SL Distance</div><div class="rg-val violet">${d.slPts} pts</div></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">AI Reasoning (${d.reasons.length} factors)</div>
+      ${d.reasons.map((r,i)=>`
+        <div class="reason-item">
+          <span class="ri-num">${String(i+1).padStart(2,'0')}</span>
+          <span class="ri-text">${r}</span>
+        </div>`).join('')}
+    </div>
+
+    ${d.warnings.length?`
+    <div class="panel">
+      <div class="panel-title">⚠ Risk Warnings</div>
+      ${d.warnings.map(w=>`
+        <div class="warning-item">
+          <span class="wi-icon">⚠</span>
+          <span class="wi-text">${w}</span>
+        </div>`).join('')}
+    </div>`:''}
+  </div>`;
+
+  document.getElementById('resultsArea').innerHTML = html;
+}
+
+// ── Update vol profile card ──
+function updateVolProfile(index, tf) {
+  const p = INDEX_PROFILES[index];
+  document.getElementById('vpIndex').textContent = p.shortName;
+  document.getElementById('vpADR').textContent   = p.adr;
+  document.getElementById('vpTick').textContent  = p.tickSpeed;
+  document.getElementById('vpRSI').textContent   = p.rsiPeriod;
+  document.getElementById('vpBB').textContent    = `${p.bbMult}σ`;
+  document.getElementById('vpATR').textContent   = `×${p.atrMultSL}`;
+}
+
+// ── Main run ──
+// ── Score a result for "best signal" ranking ──
+function signalScore(d) {
+  if(!d || d.signal==='WAIT') return -1;
+  const confBonus = d.confidence==='HIGH'?20:d.confidence==='MEDIUM'?10:0;
+  return d.winProb + confBonus + Math.abs(d.score);
+}
+
+async function runAnalysis(silent=false) {
+  const btn = document.getElementById('analyzeBtn');
+  btn.disabled = true;
+  btn.textContent = '⟳ SCANNING…';
+
+  const balance = parseFloat(document.getElementById('balance').value)||500;
+  const riskPct = parseFloat(document.getElementById('riskPct').value)||2;
+
+  if(!silent) {
+    document.getElementById('resultsArea').innerHTML = `
+      <div class="scan-loading">
+        <div style="font-size:0.7rem;color:var(--violet2);font-weight:600;margin-bottom:4px;">⚡ Connecting to Deriv WebSocket — scanning all 3 indices…</div>
+        <div class="sl-row"><span class="sl-dot scanning" id="dot-V75"></span><span class="sl-index">V 75</span><span class="sl-status" id="st-V75">Fetching live candles…</span></div>
+        <div class="sl-row"><span class="sl-dot scanning" id="dot-V50"></span><span class="sl-index">V 50</span><span class="sl-status" id="st-V50">Fetching live candles…</span></div>
+        <div class="sl-row"><span class="sl-dot scanning" id="dot-V100"></span><span class="sl-index">V100</span><span class="sl-status" id="st-V100">Fetching live candles…</span></div>
+      </div>`;
+  }
+
+  const indices = ['V75','V50','V100'];
+  const results = {};
+
+  await Promise.all(indices.map(async idx => {
+    try {
+      const d = await runAnalysisEngine(idx, selectedTF, balance, riskPct);
+      results[idx] = d;
+      const dot = document.getElementById('dot-'+idx);
+      const st  = document.getElementById('st-'+idx);
+      if(dot) dot.className = 'sl-dot done';
+      if(st)  st.textContent = d.signal+' · '+d.regime.replace('_',' ')+' · Score '+(d.score>0?'+':'')+d.score.toFixed(1);
+    } catch(err) {
+      results[idx] = null;
+      const dot = document.getElementById('dot-'+idx);
+      const st  = document.getElementById('st-'+idx);
+      if(dot) dot.className = 'sl-dot error';
+      if(st)  st.textContent = 'Error: '+err.message;
+    }
+  }));
+
+  // Pick best signal
+  const ranked = indices
+    .filter(i => results[i] && results[i].signal !== 'WAIT')
+    .sort((a,b) => signalScore(results[b]) - signalScore(results[a]));
+
+  const bestIdx    = ranked[0] || null;
+  const bestResult = bestIdx ? results[bestIdx] : null;
+
+  // 3-panel summary
+  let html = '<div class="scan-summary">';
+  indices.forEach(idx => {
+    const d = results[idx];
+    if(!d) { html += `<div class="ss-card wait"><div class="ss-index">${idx.replace('V','V ')}</div><div class="ss-signal wait">ERR</div><div class="ss-prob">Failed</div></div>`; return; }
+    const dir = d.signal==='BUY'?'buy':d.signal==='SELL'?'sell':'wait';
+    const isBest = idx===bestIdx;
+    const rs = d.regime==='STRONG_TREND'?'📈 Trend':d.regime==='RANGING'?'↔ Range':d.regime==='WEAK_TREND'?'📊 Weak':'⚠ Choppy';
+    html += `<div class="ss-card ${dir}${isBest?' best':''}">
+      <div class="ss-index">${idx.replace('V','V ')}</div>
+      <div class="ss-signal ${dir}">${d.signal==='BUY'?'▲ BUY':d.signal==='SELL'?'▼ SELL':'— WAIT'}</div>
+      <div class="ss-prob">${d.signal!=='WAIT'?d.winProb+'% win':''}</div>
+      <div class="ss-regime">${rs}</div>
+      ${isBest?'<span class="best-badge">⭐ BEST</span>':''}
+    </div>`;
+  });
+  html += '</div>';
+
+  // Best signal banner
+  if(bestResult) {
+    const dir = bestResult.signal==='BUY'?'buy':'sell';
+    html += `<div class="best-banner">
+      <div class="bb-label">⭐ Best Signal — Trade This One</div>
+      <div class="bb-main">
+        <div class="bb-dir ${dir}">${bestResult.signal==='BUY'?'▲ BUY':'▼ SELL'}</div>
+        <div class="bb-meta">
+          <div class="bb-index">${bestIdx.replace('V','V ')} · ${selectedTF}</div>
+          <div class="bb-conf">${bestResult.confidence} · ${bestResult.winProb}% · Score ${bestResult.score>0?'+':''}${bestResult.score.toFixed(1)}</div>
+        </div>
+      </div>
+    </div>`;
+  } else {
+    html += `<div style="margin:0 16px 14px;padding:14px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;text-align:center;">
+      <div style="font-size:1.2rem;margin-bottom:6px;">🔍</div>
+      <div style="font-size:0.82rem;font-weight:600;color:var(--text);">No Trade Setup Found</div>
+      <div style="font-size:0.7rem;color:var(--muted);margin-top:4px;">All 3 indices returned WAIT — no clear edge right now. Auto-scan continues every ${AUTO_INTERVAL_SECS/60} min.</div>
+    </div>`;
+  }
+
+  document.getElementById('resultsArea').innerHTML = html;
+  if(bestResult) {
+    renderResults(bestResult, bestIdx, selectedTF);
+    addTradeToLog(bestResult, bestIdx, selectedTF);
+    updateVolProfile(bestIdx, selectedTF);
+  }
+
+  // Telegram — best signal only
+  if(tgEnabled && bestResult) {
+    const {token,chatId} = getTgCfg();
+    if(token && chatId) {
+      lastSignalData = bestResult;
+      selectedIndex  = bestIdx;
+      startCountdown(bestResult);
+    }
+  }
+
+  btn.disabled = false;
+  btn.textContent = '⚡ SCAN ALL 3 INDICES';
+}
+
+// ── Telegram ──
+function getTgCfg(){return{token:document.getElementById('tgToken').value.trim(),chatId:document.getElementById('tgChatId').value.trim()};}
+function setTgStatus(msg,cls){const el=document.getElementById('tgStatus');el.textContent=msg;el.className='tg-status '+cls;}
+
+async function sendTgMsg(text) {
+  const{token,chatId}=getTgCfg();
+  if(!token||!chatId)throw new Error('Missing token or chat ID');
+  const res=await fetch(`https://api.telegram.org/bot${token}/sendMessage`,{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({chat_id:chatId,text,parse_mode:'HTML'})
+  });
+  const data=await res.json();
+  if(!data.ok)throw new Error(data.description||'Telegram error');
+  return data;
+}
+
+async function sendTgTest(){
+  setTgStatus('Sending…','info');
+  try{
+    await sendTgMsg('✅ <b>VOLTSYN</b> connected.\nDeriv Synthetic signals will arrive 1 min before entry.');
+    setTgStatus('✓ Test sent! Check Telegram.','ok');
+  }catch(e){setTgStatus('✗ '+e.message,'err');}
+}
+
+function buildTgMsg(d){
+  const arrow=d.signal==='BUY'?'🟢 BUY':'🔴 SELL';
+  const idxName = INDEX_PROFILES[selectedIndex]?.name || selectedIndex;
+  return `⚡ <b>VOLTSYN — BEST SIGNAL — ENTRY IN 1 MIN</b>
+
+⭐ <b>${idxName}</b> · ${selectedTF} · ${d.regime.replace('_',' ')}
+Signal: ${arrow} · Win Prob: ${d.winProb}%
+Confidence: ${d.confidence} · Score: ${d.score>0?'+':''}${d.score.toFixed(1)}
+
+📍 Entry: <b>${d.entry}</b>
+🛑 SL: ${d.sl} (${d.slPts} pts)
+🎯 TP1: ${d.tp1}
+🎯 TP2: ${d.tp2}
+⚖️ R:R ${d.rr} · Lot: ${d.lots}
+
+<i>${d.reasons[0]||''}</i>
+
+⚠️ Educational only. Always use demo first.`;
+}
+
+function startCountdown(d) {
+  let secs=60;
+  const bar=document.getElementById('countdown');
+  const timerEl=document.getElementById('cdTime');
+  const fillEl=document.getElementById('cdFill');
+  const labelEl=document.getElementById('cdLabel');
+  bar.classList.add('show');
+
+  sendTgMsg(buildTgMsg(d))
+    .then(()=>{labelEl.textContent='✓ Signal sent to Telegram — enter trade in:';})
+    .catch(e=>{labelEl.textContent='✗ Telegram failed: '+e.message;});
+
+  if(countdownInt)clearInterval(countdownInt);
+  countdownInt=setInterval(()=>{
+    secs--;
+    timerEl.textContent=`00:${String(secs).padStart(2,'0')}`;
+    fillEl.style.width=(secs/60*100)+'%';
+    if(secs<=0){
+      clearInterval(countdownInt);
+      labelEl.textContent='🚀 ENTER TRADE NOW on Deriv!';
+      setTimeout(()=>bar.classList.remove('show'),8000);
+    }
+  },1000);
+}
+
+function cancelCountdown(){if(countdownInt)clearInterval(countdownInt);document.getElementById('countdown').classList.remove('show');}
+
+// ── UI wiring ──
+document.querySelectorAll('#tfRow .tf-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('#tfRow .tf-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    selectedTF=btn.dataset.tf;
+  });
+});
+document.getElementById('tgToggleRow').addEventListener('click',()=>{
+  tgEnabled=!tgEnabled;
+  document.getElementById('tgSwitch').classList.toggle('on',tgEnabled);
+  document.getElementById('tgFields').classList.toggle('show',tgEnabled);
+});
+
+// ── Trade Log ──
+let tradeLog = JSON.parse(localStorage.getItem('voltsynLog')||'[]');
+
+function saveLog(){try{localStorage.setItem('voltsynLog',JSON.stringify(tradeLog));}catch(e){}}
+
+function addTradeToLog(d, index, tf){
+  const entry={
+    id:Date.now(), index, tf,
+    signal:d.signal, score:d.score,
+    entry:d.entry, sl:d.sl, tp1:d.tp1,
+    winProb:d.winProb, confidence:d.confidence,
+    time:new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}),
+    result:'pending'
+  };
+  tradeLog.unshift(entry);
+  if(tradeLog.length>30) tradeLog.pop();
+  saveLog(); renderLog();
+}
+
+function markResult(id, result){
+  const t=tradeLog.find(t=>t.id===id);
+  if(t){t.result=result;saveLog();renderLog();}
+}
+
+function clearLog(){tradeLog=[];saveLog();renderLog();}
+
+function renderLog(){
+  const wins=tradeLog.filter(t=>t.result==='win').length;
+  const loses=tradeLog.filter(t=>t.result==='lose').length;
+  const total=wins+loses;
+  document.getElementById('logWins').textContent=wins;
+  document.getElementById('logLoses').textContent=loses;
+  document.getElementById('logWR').textContent=total?Math.round(wins/total*100)+'%':'—';
+
+  const el=document.getElementById('logList');
+  if(!tradeLog.length){el.innerHTML='<div class="log-empty">No trades yet. Run an analysis to start logging.</div>';return;}
+  el.innerHTML=tradeLog.map(t=>`
+    <div class="log-entry">
+      <span class="le-dir ${t.signal.toLowerCase()}">${t.signal==='BUY'?'▲':'▼'} ${t.signal}</span>
+      <span class="le-index">${t.index}</span>
+      <span class="le-time">${t.time} ${t.tf}</span>
+      <span class="le-score">${t.score>0?'+':''}${t.score.toFixed(1)}</span>
+      ${t.result==='pending'
+        ?`<span class="le-result win" onclick="markResult(${t.id},'win')">W</span>
+          <span class="le-result lose" onclick="markResult(${t.id},'lose')">L</span>`
+        :`<span class="le-result ${t.result}">${t.result.toUpperCase()}</span>`}
+    </div>`).join('');
+}
+
+renderLog();
+
+// ── Auto-Analyze Engine ──
+const AUTO_INTERVAL_SECS = 300; // 5 minutes
+let autoEnabled   = false;
+let autoSecsLeft  = AUTO_INTERVAL_SECS;
+let autoTimerInt  = null;
+let lastAutoSignal= null; // prevent duplicate Telegram on same signal
+
+function startAutoTimer() {
+  autoSecsLeft = AUTO_INTERVAL_SECS;
+  updateAutoUI();
+  if (autoTimerInt) clearInterval(autoTimerInt);
+  autoTimerInt = setInterval(async () => {
+    autoSecsLeft--;
+    updateAutoUI();
+    if (autoSecsLeft <= 0) {
+      autoSecsLeft = AUTO_INTERVAL_SECS;
+      await runAnalysis(true); // silent = true → no thinking animation flicker
+    }
+  }, 1000);
+}
+
+function stopAutoTimer() {
+  if (autoTimerInt) clearInterval(autoTimerInt);
+  autoTimerInt = null;
+}
+
+function updateAutoUI() {
+  const mins = String(Math.floor(autoSecsLeft / 60)).padStart(2,'0');
+  const secs = String(autoSecsLeft % 60).padStart(2,'0');
+  const el = document.getElementById('autoNextTime');
+  if (el) el.textContent = `${mins}:${secs}`;
+
+  // Ring progress (94.2 = 2π×15 circumference)
+  const pct = autoSecsLeft / AUTO_INTERVAL_SECS;
+  const ring = document.getElementById('autoRingFill');
+  if (ring) ring.style.strokeDashoffset = 94.2 * (1 - pct);
+
+  // Sub-label
+  const sub = document.getElementById('autoSubLabel');
+  if (sub) sub.textContent = autoEnabled
+    ? `Next scan in ${mins}:${secs}`
+    : 'Scans every 10 minutes automatically';
+}
+
+document.getElementById('autoToggle').addEventListener('click', () => {
+  autoEnabled = !autoEnabled;
+  document.getElementById('autoSwitch').classList.toggle('on', autoEnabled);
+  document.getElementById('autoNextWrap').style.display = autoEnabled ? 'block' : 'none';
+  document.getElementById('autoRing').style.display     = autoEnabled ? 'block' : 'none';
+
+  if (autoEnabled) {
+    startAutoTimer();
+    runAnalysis(true); // immediate first scan
+  } else {
+    stopAutoTimer();
+    updateAutoUI();
+  }
+});
+
+// ── Init ──
+updateVolProfile('V75','M30');
+drawHeartbeat();
+</script>
+</body>
+</html>
